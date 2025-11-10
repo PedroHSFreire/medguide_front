@@ -1,4 +1,4 @@
-import LoginPacients from "../../../components/views/HeaderInfo/pacient/SignIn";
+import LoginPacients from "../../../components/views/pacient/SignIn";
 export default function LoginPage() {
   return (
     <div>

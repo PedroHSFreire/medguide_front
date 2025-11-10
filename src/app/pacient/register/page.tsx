@@ -1,4 +1,4 @@
-import CadastroPaciente from "../../../components/views/HeaderInfo/pacient/SignUp";
+import CadastroPaciente from "../../../components/views/pacient/SignUp";
 
 export default function RegisterPage() {
   return (

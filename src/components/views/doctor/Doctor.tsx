@@ -152,7 +152,7 @@ export default function LoginDoctor() {
                       onChange={handleInputChange}
                       onBlur={handleInputBlur}
                       placeholder="seu@email.com ou 000.000.000-00"
-                      className={`w-full pl-12 pr-10 py-3 bg-gray-50 border rounded-xl focus:outline-none transition-all duration-200 ${
+                      className={`w-full pl-12 pr-10 py-3 bg-gray-50 border text-black rounded-xl focus:outline-none transition-all duration-200 ${
                         errors.email
                           ? "border-red-500 focus:ring-2 focus:ring-red-500"
                           : touched.email && !errors.email
@@ -198,7 +198,7 @@ export default function LoginDoctor() {
                       onChange={handleInputChange}
                       onBlur={handleInputBlur}
                       placeholder="Sua senha"
-                      className={`w-full pl-12 pr-12 py-3 bg-gray-50 border rounded-xl focus:outline-none transition-all duration-200 ${
+                      className={`w-full pl-12 pr-12 py-3 bg-gray-50 text-black border rounded-xl focus:outline-none transition-all duration-200 ${
                         errors.password
                           ? "border-red-500 focus:ring-2 focus:ring-red-500"
                           : touched.password && !errors.password

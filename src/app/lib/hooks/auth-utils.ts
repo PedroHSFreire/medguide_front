@@ -1,4 +1,4 @@
-import authOptions from "./auth";
+import authOptions from "../auth";
 import { getServerSession } from "next-auth";
 
 export async function getCurrentUser() {

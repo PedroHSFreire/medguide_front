@@ -15,8 +15,8 @@ import {
   CheckCircle2,
   ArrowLeft,
 } from "lucide-react";
-import PacientService from "../../../../app/service/pacientService";
-import type { AxiosErrorResponse } from "../../../../app/types/api";
+import PacientService from "../../../app/lib/service/pacientService";
+import type { AxiosErrorResponse } from "../../../app/lib/types/api";
 
 interface RegisterFormData {
   name: string;
