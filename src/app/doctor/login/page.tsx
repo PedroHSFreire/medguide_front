@@ -1,9 +1,9 @@
-import LoginDoctor from "@/components/views/doctor/Doctor";
+import DoctorSignIn from "@/components/views/doctor/DoctorSignIn";
 
 export default function DocotorLogin() {
   return (
-    <div>
-      <LoginDoctor />
-    </div>
+    <main>
+      <DoctorSignIn />
+    </main>
   );
 }

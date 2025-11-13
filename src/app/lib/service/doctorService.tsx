@@ -1,6 +1,6 @@
 // services/doctorSearchService.ts
 import axiosInstance from "./service";
-import { ApiError, AxiosErrorResponse } from "../types/api";
+import { AxiosErrorResponse } from "../types/api";
 
 export interface DoctorSearchFilters {
   specialty?: string;

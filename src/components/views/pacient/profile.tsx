@@ -8,16 +8,16 @@ import {
   Mail,
   Phone,
   MapPin,
-  Calendar,
   Edit3,
   Save,
   X,
   Shield,
 } from "lucide-react";
-import PacientService from "../../../app/lib/service/pacientService";
+// Nota: não usamos o componente/arquivo `pacientService` diretamente aqui.
+// Em vez disso fazemos uma chamada fetch para o endpoint de atualização.
 
 export default function ProfilePage() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -30,11 +30,25 @@ export default function ProfilePage() {
   });
   const [saving, setSaving] = useState(false);
 
-  const pacientService = new PacientService();
+  // função simples que atualiza o perfil via API (endpoint PUT /api/pacient)
+  const updateProfileApi = async (data: Partial<typeof formData>) => {
+    const res = await fetch("/api/pacient", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || "Erro ao atualizar perfil");
+    }
+
+    return res.json();
+  };
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push("/auth/login");
+      router.push("/pacient/login");
       return;
     }
 
@@ -65,8 +79,9 @@ export default function ProfilePage() {
     try {
       setSaving(true);
 
-      // Aqui você implementaria a atualização do perfil na API
-      await pacientService.updateProfile({
+      // Atualiza via endpoint REST. Se não houver backend, a chamada pode falhar
+      // — mantemos o UX com mensagens de erro apropriadas.
+      await updateProfileApi({
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
@@ -98,7 +113,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-teal-100">
+      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-teal-100">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Carregando...</p>
@@ -112,7 +127,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-teal-100">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-teal-100">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -139,7 +154,7 @@ export default function ProfilePage() {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-lg p-6">
               <div className="text-center">
-                <div className="w-32 h-32 bg-gradient-to-r from-blue-500 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-32 h-32 bg-linear-to-r from-blue-500 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
                   <User className="w-12 h-12 text-white" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-800">{user.name}</h2>

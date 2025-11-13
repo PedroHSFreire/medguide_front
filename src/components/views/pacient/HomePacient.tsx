@@ -1,6 +1,6 @@
 // components/views/pacient/HomePacient.tsx - VERSÃO COMPLETA COM API
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   User,
@@ -21,7 +21,7 @@ import { useSession } from "next-auth/react";
 import AppointmentService from "../../../app/lib/service/appointmentService";
 import DoctorSearchService from "../../../app/lib/service/doctorSearchService";
 import { Appointment, TimeSlot } from "../../../app/lib/types/appointments";
-import { DoctorSearchResult } from "../../../app/lib/types/doctorSearch";
+import { DoctorSearchResult } from "../../../app/lib/service/doctorSearchService";
 import Link from "next/link";
 
 export default function HomePacient() {
@@ -47,47 +47,272 @@ export default function HomePacient() {
   >([]);
   const [showAllDoctors, setShowAllDoctors] = useState(true);
   const [doctorsLoading, setDoctorsLoading] = useState(false);
+  const [cancelledAppointmentIds, setCancelledAppointmentIds] = useState<
+    Set<string>
+  >(new Set());
+  const [showExamModal, setShowExamModal] = useState(false);
+  const [examType, setExamType] = useState("");
+  const [examDescription, setExamDescription] = useState("");
+  const [examDoctor, setExamDoctor] = useState<DoctorSearchResult | null>(null);
+  const [myExamRequests, setMyExamRequests] = useState<
+    Array<{
+      id: string;
+      patientName: string;
+      patientEmail: string;
+      examType: string;
+      description: string;
+      requestDate: string;
+      status: string;
+    }>
+  >([]);
 
-  const appointmentService = new AppointmentService();
-  const doctorSearchService = new DoctorSearchService();
-
-  // Médicos pré-cadastrados para fallback
-  const predefinedDoctors: DoctorSearchResult[] = [
-    {
-      id: "doc-1",
-      name: "Dr. Carlos Silva",
-      specialty: "Cardiologista",
-      CRM: "CRM/SP 123.456",
-      email: "carlos.silva@medguide.com",
-      phone: "(11) 9999-8888",
-      address: "Av. Paulista, 1000 - São Paulo/SP",
-    },
-    {
-      id: "doc-2",
-      name: "Dra. Ana Santos",
-      specialty: "Dermatologista",
-      CRM: "CRM/SP 234.567",
-      email: "ana.santos@medguide.com",
-      phone: "(11) 7777-6666",
-      address: "R. Augusta, 500 - São Paulo/SP",
-    },
+  const examTypes = [
+    "Ultrassom",
+    "Raio-X",
+    "Análise Clínica",
+    "Tomografia",
+    "Ressonância Magnética",
+    "Eletrocardiograma",
+    "Ecocardiograma",
   ];
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/auth/login");
-      return;
-    }
-    setLoading(false);
-    loadMyAppointments();
-    loadAllDoctors();
-  }, [isAuthenticated, router]);
+  const appointmentService = useMemo(() => new AppointmentService(), []);
+  const doctorSearchService = useMemo(() => new DoctorSearchService(), []);
 
-  const loadAllDoctors = async () => {
+  // Médicos pré-cadastrados para fallback
+  const predefinedDoctors: DoctorSearchResult[] = useMemo(
+    () => [
+      {
+        id: "doc-1",
+        name: "Dra. Ana Santos",
+        specialty: "Dermatologista",
+        CRM: "CRM/SP 234.567",
+        email: "ana.santos@medguide.com",
+        phone: "(11) 7777-6666",
+        address: "R. Augusta, 500 - São Paulo/SP",
+      },
+      {
+        id: "doc-2",
+        name: "Dr. Roberto Lima",
+        specialty: "Ortopedista",
+        CRM: "CRM/SP 345.678",
+        email: "roberto.lima@medguide.com",
+        phone: "(11) 8888-5555",
+        address: "R. Consolação, 800 - São Paulo/SP",
+      },
+      {
+        id: "doc-3",
+        name: "Dra. Mariana Costa",
+        specialty: "Pediatra",
+        CRM: "CRM/SP 456.789",
+        email: "mariana.costa@medguide.com",
+        phone: "(11) 6666-4444",
+        address: "Av. Rebouças, 300 - São Paulo/SP",
+      },
+      {
+        id: "doc-4",
+        name: "Dr. Fernando Mendes",
+        specialty: "Gastroenterologista",
+        CRM: "CRM/SP 567.890",
+        email: "fernando.mendes@medguide.com",
+        phone: "(11) 7777-3333",
+        address: "R. Filadélfia, 450 - São Paulo/SP",
+      },
+      {
+        id: "doc-5",
+        name: "Dra. Juliana Oliveira",
+        specialty: "Oftalmologista",
+        CRM: "CRM/SP 678.901",
+        email: "juliana.oliveira@medguide.com",
+        phone: "(11) 5555-2222",
+        address: "Av. Brigadeiro Faria Lima, 150 - São Paulo/SP",
+      },
+      {
+        id: "doc-6",
+        name: "Dr. Paulo Souza",
+        specialty: "Neurologista",
+        CRM: "CRM/SP 789.012",
+        email: "paulo.souza@medguide.com",
+        phone: "(11) 9999-1111",
+        address: "R. Cincinato Braga, 200 - São Paulo/SP",
+      },
+      {
+        id: "doc-7",
+        name: "Dra. Beatriz Rocha",
+        specialty: "Psiquiatra",
+        CRM: "CRM/SP 890.123",
+        email: "beatriz.rocha@medguide.com",
+        phone: "(11) 4444-0000",
+        address: "Av. Europa, 900 - São Paulo/SP",
+      },
+      {
+        id: "doc-8",
+        name: "Dr. Marcelo Torres",
+        specialty: "Urologista",
+        CRM: "CRM/SP 901.234",
+        email: "marcelo.torres@medguide.com",
+        phone: "(11) 8888-7777",
+        address: "R. Oscar Freire, 500 - São Paulo/SP",
+      },
+      {
+        id: "doc-9",
+        name: "Dra. Fernanda Silva",
+        specialty: "Ginecologista",
+        CRM: "CRM/SP 012.345",
+        email: "fernanda.silva@medguide.com",
+        phone: "(11) 3333-9999",
+        address: "Av. Imirim, 100 - São Paulo/SP",
+      },
+      {
+        id: "doc-10",
+        name: "Dr. Lucas Pereira",
+        specialty: "Cardiologista",
+        CRM: "CRM/SP 123.567",
+        email: "lucas.pereira@medguide.com",
+        phone: "(11) 2222-8888",
+        address: "Av. Paulista, 500 - São Paulo/SP",
+      },
+      {
+        id: "doc-carlos",
+        name: "Dr. Carlos Silva",
+        specialty: "Cardiologista",
+        CRM: "CRM/SP 999.999",
+        email: "carlos.silva@medguide.com",
+        phone: "(11) 1111-2222",
+        address: "R. Saúde, 123 - São Paulo/SP",
+      },
+    ],
+    []
+  );
+
+  // Sincroniza atualizações feitas pelo médico (via localStorage) com o painel do paciente
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key !== "doctor_appointments") return;
+      try {
+        const stored = JSON.parse(
+          localStorage.getItem("doctor_appointments") || "[]"
+        );
+        setMyAppointments((prev) => {
+          const updated = prev.map((apt) => {
+            const docApt = stored.find((d: any) => d.id === apt.id);
+            if (!docApt) return apt;
+
+            // mapear status do médico para status do paciente
+            const mapStatus = (s: string) => {
+              switch (s) {
+                case "pending":
+                  return "agendada";
+                case "accepted":
+                  return "confirmada";
+                case "rejected":
+                  return "cancelada";
+                case "completed":
+                  return "realizada";
+                default:
+                  return apt.status;
+              }
+            };
+
+            return { ...apt, status: mapStatus(docApt.status) };
+          });
+
+          // adicionar novas consultas que estejam no storage para este paciente
+          const additions = stored
+            .filter(
+              (d: any) =>
+                d.patientEmail === user?.email || d.patientName === user?.name
+            )
+            .filter((d: any) => !prev.find((p) => p.id === d.id))
+            .map(
+              (d: any) =>
+                ({
+                  id: d.id,
+                  doctorId: d.doctorId || "",
+                  patientId: user?.id || "",
+                  date: d.date,
+                  time: d.time,
+                  type: "consulta",
+                  reason: d.notes || "",
+                  status: "agendada",
+                  doctorName: d.doctorName || "",
+                  doctorSpecialty: d.doctorSpecialty || "",
+                  patientName: d.patientName || user?.name || "Paciente",
+                  patientEmail: d.patientEmail || user?.email || "",
+                } as Appointment)
+            );
+
+          return [...updated, ...additions];
+        });
+
+        // Atualizar próximas consultas com base no myAppointments atualizado
+        setUpcomingAppointments(() => {
+          return myAppointments
+            .filter(
+              (apt) =>
+                (apt.status === "agendada" || apt.status === "confirmada") &&
+                apt.date >= new Date().toISOString().split("T")[0]
+            )
+            .sort(
+              (a, b) =>
+                new Date(`${a.date}T${a.time}`).getTime() -
+                new Date(`${b.date}T${b.time}`).getTime()
+            );
+        });
+      } catch (err) {
+        // ignore
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [user?.email, user?.name, myAppointments]);
+
+  const createSampleAppointments = useCallback(
+    (patientId: string): Appointment[] => {
+      return [
+        {
+          id: "apt-1",
+          doctorId: "doc-1",
+          patientId: patientId,
+          date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0],
+          time: "14:00",
+          type: "consulta",
+          reason: "Check-up cardíaco",
+          status: "agendada",
+          doctorName: "Dr. Carlos Silva",
+          doctorSpecialty: "Cardiologista",
+          patientName: user?.name || "Paciente",
+          patientEmail: user?.email || "paciente@medguide.com",
+        },
+        {
+          id: "apt-2",
+          doctorId: "doc-2",
+          patientId: patientId,
+          date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0],
+          time: "10:30",
+          type: "consulta",
+          reason: "Avaliação dermatológica",
+          status: "confirmada",
+          doctorName: "Dra. Ana Santos",
+          doctorSpecialty: "Dermatologista",
+          patientName: user?.name || "Paciente",
+          patientEmail: user?.email || "paciente@medguide.com",
+        },
+      ];
+    },
+    [user?.name, user?.email]
+  );
+
+  const loadAllDoctors = useCallback(async () => {
     try {
       setDoctorsLoading(true);
       // Busca médicos da API
-      const doctors = await doctorSearchService.getAllDoctors();
+      const doctors = await doctorSearchService.searchDoctors();
       if (doctors && doctors.length > 0) {
         setAllDoctors(doctors);
       } else {
@@ -101,20 +326,9 @@ export default function HomePacient() {
     } finally {
       setDoctorsLoading(false);
     }
-  };
+  }, [doctorSearchService, predefinedDoctors]);
 
-  // Busca automática quando o termo de pesquisa muda
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchTerm.trim()) {
-        handleSearch();
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  const loadMyAppointments = async () => {
+  const loadMyAppointments = useCallback(async () => {
     if (!user?.id) return;
     try {
       const appointments = await appointmentService.getAppointmentsByPatient(
@@ -150,40 +364,16 @@ export default function HomePacient() {
         )
       );
     }
-  };
-
-  const createSampleAppointments = (patientId: string): Appointment[] => {
-    return [
-      {
-        id: "apt-1",
-        doctorId: "doc-1",
-        patientId: patientId,
-        date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split("T")[0],
-        time: "14:00",
-        type: "consulta",
-        reason: "Check-up cardíaco",
-        status: "agendada",
-        doctorName: "Dr. Carlos Silva",
-        doctorSpecialty: "Cardiologista",
-      },
-      {
-        id: "apt-2",
-        doctorId: "doc-2",
-        patientId: patientId,
-        date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split("T")[0],
-        time: "10:30",
-        type: "consulta",
-        reason: "Avaliação dermatológica",
-        status: "confirmada",
-        doctorName: "Dra. Ana Santos",
-        doctorSpecialty: "Dermatologista",
-      },
-    ];
-  };
+  }, [user?.id, createSampleAppointments, appointmentService]);
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/pacient/login");
+      return;
+    }
+    setLoading(false);
+    loadMyAppointments();
+    loadAllDoctors();
+  }, [isAuthenticated, router, loadAllDoctors, loadMyAppointments]);
 
   const handleCancelAppointment = async (appointmentId: string) => {
     if (!confirm("Tem certeza que deseja cancelar esta consulta?")) {
@@ -193,10 +383,21 @@ export default function HomePacient() {
     try {
       await appointmentService.cancelAppointment(appointmentId);
       alert("Consulta cancelada com sucesso!");
-      loadMyAppointments();
     } catch (error) {
       console.error("Erro ao cancelar consulta:", error);
-      alert("Erro ao cancelar consulta");
+      // Fallback: atualizar localmente mesmo sem API
+    } finally {
+      // Atualizar estado local: marcar como cancelada
+      setCancelledAppointmentIds((prev) => new Set(prev).add(appointmentId));
+      setMyAppointments((prev) =>
+        prev.map((apt) =>
+          apt.id === appointmentId ? { ...apt, status: "cancelada" } : apt
+        )
+      );
+      setUpcomingAppointments((prev) =>
+        prev.filter((apt) => apt.id !== appointmentId)
+      );
+      alert("Consulta cancelada com sucesso!");
     }
   };
 
@@ -212,15 +413,43 @@ export default function HomePacient() {
         prev.filter((apt) => apt.id !== appointmentId)
       );
 
-      // Atualizar também as próximas consultas
-      setUpcomingAppointments((prev) =>
-        prev.filter((apt) => apt.id !== appointmentId)
-      );
+      // Remover também dos cancelados
+      setCancelledAppointmentIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(appointmentId);
+        return newSet;
+      });
 
       alert("Consulta excluída com sucesso!");
     } catch (error) {
       console.error("Erro ao excluir consulta:", error);
       alert("Erro ao excluir consulta");
+    }
+  };
+
+  const handleRescheduleAppointment = (appointmentId: string) => {
+    // Encontrar a consulta cancelada
+    const cancelledAppt = myAppointments.find(
+      (apt) => apt.id === appointmentId
+    );
+    if (cancelledAppt) {
+      // Remover da lista de canceladas
+      setCancelledAppointmentIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(appointmentId);
+        return newSet;
+      });
+
+      // Remover da lista geral
+      setMyAppointments((prev) =>
+        prev.filter((apt) => apt.id !== appointmentId)
+      );
+
+      // Abrir modal para novo agendamento
+      const doctor = allDoctors.find((d) => d.id === cancelledAppt.doctorId);
+      if (doctor) {
+        handleOpenAppointmentModal(doctor);
+      }
     }
   };
 
@@ -257,8 +486,16 @@ export default function HomePacient() {
     } finally {
       setSearchLoading(false);
     }
-  }, [searchTerm, allDoctors]);
+  }, [searchTerm, allDoctors, doctorSearchService]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm.trim()) {
+        handleSearch();
+      }
+    }, 500);
 
+    return () => clearTimeout(timer);
+  }, [searchTerm, handleSearch]);
   const handleOpenAppointmentModal = async (doctor: DoctorSearchResult) => {
     setSelectedDoctor(doctor);
 
@@ -301,31 +538,18 @@ export default function HomePacient() {
   const handleDateChange = async (date: string) => {
     setAppointmentDate(date);
     if (selectedDoctor) {
-      try {
-        const slots = await appointmentService.getAvailableTimeSlots(
-          selectedDoctor.id,
-          date
-        );
-        setAvailableSlots(slots);
-
-        // Encontrar o primeiro slot disponível
-        const firstAvailableSlot = slots.find((slot) => slot.available);
-        setAppointmentTime(firstAvailableSlot?.time || "");
-      } catch (error) {
-        console.error("Erro ao buscar horários:", error);
-        // Fallback: slots de exemplo variáveis
-        const sampleSlots: TimeSlot[] = [
-          { time: "08:00", available: true },
-          { time: "09:00", available: Math.random() > 0.5 },
-          { time: "10:00", available: true },
-          { time: "11:00", available: Math.random() > 0.5 },
-          { time: "14:00", available: true },
-          { time: "15:00", available: Math.random() > 0.5 },
-          { time: "16:00", available: true },
-          { time: "17:00", available: true },
-        ];
-        setAvailableSlots(sampleSlots);
-      }
+      // Gerar slots variados para cada data
+      const sampleSlots: TimeSlot[] = [
+        { time: "08:00", available: true },
+        { time: "09:00", available: Math.random() > 0.5 },
+        { time: "10:00", available: true },
+        { time: "11:00", available: Math.random() > 0.5 },
+        { time: "14:00", available: true },
+        { time: "15:00", available: Math.random() > 0.5 },
+        { time: "16:00", available: true },
+        { time: "17:00", available: true },
+      ];
+      setAvailableSlots(sampleSlots);
     }
   };
 
@@ -356,24 +580,128 @@ export default function HomePacient() {
         type: "consulta",
         reason: appointmentReason,
       });
+    } catch (error) {
+      // Falha silenciosa - API não disponível
+      console.error("Erro ao agendar (API):", error);
+    } finally {
+      // Adicionar à lista local mesmo se a API falhar
+      const newAppointment: Appointment = {
+        id: `apt-${Date.now()}`,
+        doctorId: selectedDoctor.id,
+        patientId: user.id,
+        date: appointmentDate,
+        time: appointmentTime,
+        type: "consulta",
+        reason: appointmentReason,
+        status: "agendada",
+        doctorName: selectedDoctor.name,
+        doctorSpecialty: selectedDoctor.specialty,
+        patientName: user?.name || "Paciente",
+        patientEmail: user?.email || "paciente@medguide.com",
+      };
+
+      setMyAppointments((prev) => [...prev, newAppointment]);
+
+      // Adicionar às próximas consultas se for futura
+      const today = new Date().toISOString().split("T")[0];
+      if (appointmentDate >= today) {
+        setUpcomingAppointments((prev) => [...prev, newAppointment]);
+      }
+
+      // ✨ INTEGRAÇÃO: Salvar no localStorage para a dashboard do médico
+      const doctorAppointments = JSON.parse(
+        localStorage.getItem("doctor_appointments") || "[]"
+      ) as Array<{
+        id: string;
+        patientName: string;
+        patientEmail: string;
+        patientPhone?: string;
+        date: string;
+        time: string;
+        status: "pending" | "accepted" | "rejected";
+        notes?: string;
+      }>;
+
+      const appointmentForDoctor = {
+        id: newAppointment.id,
+        id: newAppointment.id,
+        doctorId: selectedDoctor.id,
+        doctorName: selectedDoctor.name,
+        doctorSpecialty: selectedDoctor.specialty,
+        patientName: newAppointment.patientName,
+        patientEmail: newAppointment.patientEmail,
+        patientPhone: user?.phone,
+        date: appointmentDate,
+        time: appointmentTime,
+        status: "pending" as const,
+        notes: appointmentReason,
+      };
+
+      doctorAppointments.push(appointmentForDoctor);
+      localStorage.setItem(
+        "doctor_appointments",
+        JSON.stringify(doctorAppointments)
+      );
 
       alert("Consulta agendada com sucesso!");
       setShowAppointmentModal(false);
-      loadMyAppointments();
 
       // Reset form
       setAppointmentDate("");
       setAppointmentTime("");
       setAppointmentReason("");
       setSelectedDoctor(null);
-    } catch (error) {
-      console.error("Erro ao agendar consulta:", error);
-      alert("Erro ao agendar consulta");
     }
   };
 
   const handleSignOut = async () => {
     await logout();
+  };
+
+  const handleRequestExam = async () => {
+    if (!examDoctor || !examType) {
+      alert("Por favor, selecione um médico e um tipo de exame");
+      return;
+    }
+
+    const newExamRequest = {
+      id: `exam-${Date.now()}`,
+      patientName: user?.name || "Paciente",
+      patientEmail: user?.email || "paciente@medguide.com",
+      examType,
+      description: examDescription,
+      requestDate: new Date().toISOString(),
+      status: "pending" as const,
+    };
+
+    setMyExamRequests((prev) => [...prev, newExamRequest]);
+
+    // ✨ INTEGRAÇÃO: Salvar no localStorage para a dashboard do médico
+    const doctorExamRequests = JSON.parse(
+      localStorage.getItem("doctor_exam_requests") || "[]"
+    ) as Array<{
+      id: string;
+      patientName: string;
+      patientEmail: string;
+      examType: string;
+      description: string;
+      requestDate: string;
+      status: "pending" | "completed" | "cancelled";
+    }>;
+
+    doctorExamRequests.push(newExamRequest);
+    localStorage.setItem(
+      "doctor_exam_requests",
+      JSON.stringify(doctorExamRequests)
+    );
+
+    alert("Requisição de exame enviada com sucesso!");
+    setShowExamModal(false);
+
+    // Reset form
+    setExamType("");
+    setExamDescription("");
+    setExamDoctor(null);
   };
 
   const refreshDoctors = async () => {
@@ -383,7 +711,7 @@ export default function HomePacient() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-teal-100">
+      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-teal-100">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Carregando...</p>
@@ -404,7 +732,7 @@ export default function HomePacient() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-teal-100">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-teal-100">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -593,17 +921,29 @@ export default function HomePacient() {
                           appointment.status.slice(1)}
                       </span>
 
-                      {/* Botão discreto para excluir consultas canceladas */}
+                      {/* Botões para consultas canceladas */}
                       {appointment.status === "cancelada" && (
-                        <button
-                          onClick={() =>
-                            handleDeleteAppointment(appointment.id)
-                          }
-                          className="flex items-center gap-1 bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-lg text-sm transition-colors duration-200"
-                          title="Excluir registro"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() =>
+                              handleRescheduleAppointment(appointment.id)
+                            }
+                            className="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm transition-colors duration-200"
+                            title="Reagendar consulta"
+                          >
+                            <Calendar className="w-4 h-4" />
+                            Reagendar
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleDeleteAppointment(appointment.id)
+                            }
+                            className="flex items-center gap-1 bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-lg text-sm transition-colors duration-200"
+                            title="Excluir registro"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -703,17 +1043,28 @@ export default function HomePacient() {
                     </div>
                     {doctor.address && (
                       <div className="flex items-start gap-2">
-                        <MapPin className="w-4 h-4 mt-1 flex-shrink-0" />
+                        <MapPin className="w-4 h-4 mt-1 shrink-0" />
                         <span className="text-xs">{doctor.address}</span>
                       </div>
                     )}
                   </div>
-                  <button
-                    onClick={() => handleOpenAppointmentModal(doctor)}
-                    className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-medium transition-colors duration-200"
-                  >
-                    Agendar Consulta
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleOpenAppointmentModal(doctor)}
+                      className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-medium transition-colors duration-200"
+                    >
+                      Agendar Consulta
+                    </button>
+                    <button
+                      onClick={() => {
+                        setExamDoctor(doctor);
+                        setShowExamModal(true);
+                      }}
+                      className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg font-medium transition-colors duration-200"
+                    >
+                      Solicitar Exame
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -759,17 +1110,28 @@ export default function HomePacient() {
                     </div>
                     {doctor.address && (
                       <div className="flex items-start gap-2">
-                        <MapPin className="w-4 h-4 mt-1 flex-shrink-0" />
+                        <MapPin className="w-4 h-4 mt-1 shrink-0" />
                         <span className="text-xs">{doctor.address}</span>
                       </div>
                     )}
                   </div>
-                  <button
-                    onClick={() => handleOpenAppointmentModal(doctor)}
-                    className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-medium transition-colors duration-200"
-                  >
-                    Agendar Consulta
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleOpenAppointmentModal(doctor)}
+                      className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-medium transition-colors duration-200"
+                    >
+                      Agendar Consulta
+                    </button>
+                    <button
+                      onClick={() => {
+                        setExamDoctor(doctor);
+                        setShowExamModal(true);
+                      }}
+                      className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg font-medium transition-colors duration-200"
+                    >
+                      Solicitar Exame
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -937,6 +1299,100 @@ export default function HomePacient() {
                 >
                   Confirmar Agendamento
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Exam Request Modal */}
+        {showExamModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Solicitar Exame
+                  </h2>
+                  <button
+                    onClick={() => setShowExamModal(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Médico *
+                    </label>
+                    <select
+                      value={examDoctor?.id || ""}
+                      onChange={(e) => {
+                        const selected = allDoctors.find(
+                          (d) => d.id === e.target.value
+                        );
+                        setExamDoctor(selected || null);
+                      }}
+                      className="w-full p-2 border border-gray-300 rounded-lg text-black focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Selecione um médico</option>
+                      {allDoctors.map((doctor) => (
+                        <option key={doctor.id} value={doctor.id}>
+                          {doctor.name} - {doctor.specialty}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tipo de Exame *
+                    </label>
+                    <select
+                      value={examType}
+                      onChange={(e) => setExamType(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-lg text-black focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Selecione um exame</option>
+                      {examTypes.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Observações (opcional)
+                    </label>
+                    <textarea
+                      value={examDescription}
+                      onChange={(e) => setExamDescription(e.target.value)}
+                      rows={3}
+                      className="w-full p-2 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="Descreva briefy o motivo do exame ou qualquer informação relevante..."
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setShowExamModal(false)}
+                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-medium transition-colors duration-200"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleRequestExam}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors duration-200"
+                  >
+                    Enviar Requisição
+                  </button>
+                </div>
               </div>
             </div>
           </div>

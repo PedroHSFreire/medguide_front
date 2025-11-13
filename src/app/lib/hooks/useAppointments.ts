@@ -53,7 +53,9 @@ export const useAppointments = () => {
       setError(null);
 
       const newAppointment = await appointmentService.createAppointment(data);
-      setAppointments((prev) => [...prev, newAppointment]);
+      if (newAppointment) {
+        setAppointments((prev) => [...prev, newAppointment]);
+      }
 
       return newAppointment;
     } catch (err) {

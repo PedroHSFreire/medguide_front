@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
@@ -12,9 +12,8 @@ import {
   Bell,
   CheckCircle,
   XCircle,
-  Clock,
 } from "lucide-react";
-import { AppointmentService } from "../../../app/service/appointmentService";
+import AppointmentService from "../../../app/lib/service/appointmentService";
 import { Appointment } from "../../../app/lib/types/appointments";
 
 export default function DoctorDashboard() {
@@ -25,14 +24,14 @@ export default function DoctorDashboard() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
 
-  const appointmentService = new AppointmentService();
+  const appointmentService = useMemo(() => new AppointmentService(), []);
   const doctor = session?.user;
 
   useEffect(() => {
     if (status === "loading") return;
 
     if (!session) {
-      router.push("/auth/login");
+      router.push("/doctor/login");
       return;
     }
 
@@ -40,31 +39,34 @@ export default function DoctorDashboard() {
       router.push("/pacient/dashboard");
       return;
     }
+
+    const loadAppointments = async () => {
+      if (!doctor?.id) return;
+
+      const allAppointments = await appointmentService.getAppointmentsByDoctor(
+        doctor.id
+      );
+      setAppointments(allAppointments);
+
+      // Filtrar consultas de hoje
+      const today = new Date().toISOString().split("T")[0];
+      const todayApps = allAppointments.filter((apt) => apt.date === today);
+      setTodayAppointments(todayApps);
+      setLoading(false);
+    };
+
     loadAppointments();
-    setLoading(false);
-  }, [session, status, router]);
-
-  const loadAppointments = async () => {
-    if (!doctor?.id) return;
-
-    const allAppointments = await appointmentService.getAppointmentsByDoctor(
-      doctor.id
-    );
-    setAppointments(allAppointments);
-
-    // Filtrar consultas de hoje
-    const today = new Date().toISOString().split("T")[0];
-    const todayApps = allAppointments.filter((apt) => apt.date === today);
-    setTodayAppointments(todayApps);
-  };
-
+  }, [session, status, router, doctor?.id, appointmentService]);
   const handleUpdateAppointmentStatus = async (
     id: string,
     status: Appointment["status"]
   ) => {
     try {
       await appointmentService.updateAppointmentStatus(id, status);
-      loadAppointments(); // Recarregar a lista
+      // Atualizar a lista de consultas localmente
+      setAppointments(
+        appointments.map((apt) => (apt.id === id ? { ...apt, status } : apt))
+      );
     } catch (error) {
       console.error("Erro ao atualizar status:", error);
       alert("Erro ao atualizar status da consulta");
@@ -73,12 +75,12 @@ export default function DoctorDashboard() {
 
   const handleSignOut = async () => {
     await fetch("/api/auth/signout", { method: "POST" });
-    router.push("/auth/login");
+    router.push("/doctor/login");
   };
 
   if (loading || status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-teal-100">
+      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-teal-100">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Carregando...</p>
@@ -100,7 +102,7 @@ export default function DoctorDashboard() {
     });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-teal-100">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-teal-100">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -134,7 +136,7 @@ export default function DoctorDashboard() {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-lg p-6">
               <div className="text-center mb-6">
-                <div className="w-32 h-32 bg-gradient-to-r from-blue-500 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-32 h-32 bg-linear-to-r from-blue-500 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
                   <User className="w-12 h-12 text-white" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-800">

@@ -1,4 +1,3 @@
-// components/ProtectedRoute.tsx
 "use client";
 
 import { useEffect } from "react";
@@ -19,7 +18,7 @@ export default function ProtectedRoute({
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.push("/auth/login");
+      router.push("/pacient/login");
       return;
     }
 

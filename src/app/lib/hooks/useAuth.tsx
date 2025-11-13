@@ -1,4 +1,4 @@
-// hooks/useAuth.ts
+// hooks/useAuth.tsx - VERSÃO CORRIGIDA
 "use client";
 
 import {
@@ -32,7 +32,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
   login: (
-    email: string,
+    login: string,
     password: string
   ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -51,7 +51,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Verificar autenticação ao carregar
   const checkAuth = async () => {
     try {
       setLoading(true);
@@ -59,10 +58,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       if (session?.user && session.accessToken) {
         const userData: User = {
-          id: session.user.id,
+          id: session.user.id || "",
           name: session.user.name || "",
           email: session.user.email || "",
-          role: session.role as "pacient" | "doctor",
+          role: (session.role as "pacient" | "doctor") || "pacient",
           cpf: session.user.cpf,
           crm: session.user.crm,
           specialty: session.user.specialty,
@@ -76,11 +75,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(userData);
         setToken(session.accessToken);
 
-        // Salvar no localStorage para persistência
         localStorage.setItem("user", JSON.stringify(userData));
         localStorage.setItem("token", session.accessToken);
       } else {
-        // Tentar recuperar do localStorage
         const storedUser = localStorage.getItem("user");
         const storedToken = localStorage.getItem("token");
 
@@ -168,11 +165,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Fazer logout no NextAuth
       await signOut({
         redirect: false,
-        callbackUrl: "/auth/login",
+        callbackUrl: "/pacient/login",
       });
 
-      // Redirecionar para login
-      router.push("/auth/login");
+      router.push("/pacient/login");
     } catch (error) {
       console.error("Erro no logout:", error);
     } finally {

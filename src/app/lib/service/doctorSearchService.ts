@@ -1,6 +1,5 @@
 // services/doctorSearchService.ts
 import axiosInstance from "./service";
-import { ApiError, AxiosErrorResponse } from "../types/api";
 
 export interface DoctorSearchFilters {
   specialty?: string;
@@ -37,59 +36,51 @@ export default class DoctorSearchService {
     try {
       const response = await axiosInstance.get<
         ApiResponse<DoctorSearchResult[]>
-      >("/api/doctors/search", { params: filters });
+      >("/doctor/search", { params: filters });
       return response.data.data;
-    } catch (error) {
-      const axiosError = error as AxiosErrorResponse;
-      console.error("Erro ao buscar médicos:", axiosError);
-      throw new Error(
-        axiosError.response?.data?.error || "Erro ao buscar médicos"
-      );
+    } catch {
+      console.warn("Busca de médicos não disponível na API - usando fallback");
+      return []; // Return empty array instead of throwing error
     }
   }
 
   async getAllSpecialties(): Promise<string[]> {
     try {
       const response = await axiosInstance.get<ApiResponse<string[]>>(
-        "/api/doctors/specialties"
+        "/doctor/specialties"
       );
       return response.data.data;
-    } catch (error) {
-      const axiosError = error as AxiosErrorResponse;
-      console.error("Erro ao buscar especialidades:", axiosError);
-      throw new Error(
-        axiosError.response?.data?.error || "Erro ao buscar especialidades"
+    } catch {
+      console.warn(
+        "Busca de especialidades não disponível na API - usando fallback"
       );
+      return []; // Return empty array instead of throwing error
     }
   }
 
-  async getDoctorById(id: string): Promise<DoctorSearchResult> {
+  async getDoctorById(id: string): Promise<DoctorSearchResult | undefined> {
     try {
       const response = await axiosInstance.get<ApiResponse<DoctorSearchResult>>(
         `/api/doctors/${id}`
       );
       return response.data.data;
-    } catch (error) {
-      const axiosError = error as AxiosErrorResponse;
-      console.error("Erro ao buscar médico:", axiosError);
-      throw new Error(
-        axiosError.response?.data?.error || "Erro ao buscar médico"
-      );
+    } catch {
+      console.warn("Busca de médico não disponível na API - usando fallback");
+      return undefined; // Return undefined instead of throwing error
     }
   }
 
-  async getDoctorByCRM(crm: string): Promise<DoctorSearchResult> {
+  async getDoctorByCRM(crm: string): Promise<DoctorSearchResult | undefined> {
     try {
       const response = await axiosInstance.get<ApiResponse<DoctorSearchResult>>(
         `/api/doctors/crm/${crm}`
       );
       return response.data.data;
-    } catch (error) {
-      const axiosError = error as AxiosErrorResponse;
-      console.error("Erro ao buscar médico por CRM:", axiosError);
-      throw new Error(
-        axiosError.response?.data?.error || "Erro ao buscar médico por CRM"
+    } catch {
+      console.warn(
+        "Busca de médico por CRM não disponível na API - usando fallback"
       );
+      return undefined; // Return undefined instead of throwing error
     }
   }
 }

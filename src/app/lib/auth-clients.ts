@@ -1,4 +1,5 @@
-import auth from "next-auth";
+// lib/auth-clients.ts - CORRIGIDO
+import { getServerSession as getServerSessionNextAuth } from "next-auth";
 import { authOptions } from "./auth";
 
-export const getServerSession = () => auth(authOptions);
+export const getServerSession = () => getServerSessionNextAuth(authOptions);

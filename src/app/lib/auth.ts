@@ -1,12 +1,44 @@
 // lib/auth.ts - VERSÃO SIMPLIFICADA E CORRIGIDA
-import NextAuth, { type NextAuthOptions } from "next-auth";
+import NextAuth, {
+  type NextAuthOptions,
+  User as NextAuthUser,
+} from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-// Configuração da URL da API
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://medguide-y0j4.onrender.com";
 
-// Usuários pré-programados para demo
+interface CustomUser extends NextAuthUser {
+  role: string;
+  accessToken: string;
+  cpf?: string;
+  crm?: string;
+  specialty?: string;
+  phone?: string;
+  address?: string;
+  experience?: string;
+  education?: string;
+  bio?: string;
+}
+
+type ApiResponse = {
+  success?: boolean;
+  data?: {
+    pacient?: { id?: string; email?: string; name?: string; cpf?: string };
+    doctor?: {
+      id?: string;
+      email?: string;
+      name?: string;
+      CRM?: string;
+      specialty?: string;
+    };
+    id?: string;
+    email?: string;
+    name?: string;
+    cpf?: string;
+    token?: string;
+  };
+};
 const hardcodedUsers = [
   {
     login: "demo@medguide.com",
@@ -46,7 +78,6 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         console.log("🔐 Tentando autenticação para:", credentials?.login);
 
-        // Verifica usuários pré-programados primeiro
         const hardcodedUser = hardcodedUsers.find(
           (user) =>
             user.login === credentials?.login &&
@@ -55,7 +86,7 @@ export const authOptions: NextAuthOptions = {
 
         if (hardcodedUser) {
           console.log("✅ Login pré-programado bem-sucedido");
-          return hardcodedUser.user;
+          return hardcodedUser.user as unknown as NextAuthUser;
         }
 
         if (!credentials?.login || !credentials?.password) {
@@ -64,60 +95,106 @@ export const authOptions: NextAuthOptions = {
 
         try {
           // Tenta login como PACIENTE
-          const pacientResponse = await fetch(
-            `${API_BASE_URL}/api/pacient/login`,
-            {
+          // O backend pode esperar { email, password } ou { cpf, password }.
+          const loginValue = String(credentials.login).trim();
+
+          const tryPacientLogin = async (
+            payload: Record<string, unknown>
+          ): Promise<ApiResponse | null> => {
+            const res = await fetch(`${API_BASE_URL}/pacient/login`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                login: credentials.login,
-                password: credentials.password,
-              }),
-            }
-          );
+              body: JSON.stringify(payload),
+            });
 
-          if (pacientResponse.ok) {
-            const pacientData = await pacientResponse.json();
-            if (pacientData.success && pacientData.data) {
-              return {
-                id: pacientData.data.pacient?.id || pacientData.data.id,
-                email:
-                  pacientData.data.pacient?.email || pacientData.data.email,
-                name: pacientData.data.pacient?.name || pacientData.data.name,
-                cpf: pacientData.data.pacient?.cpf || pacientData.data.cpf,
-                role: "pacient",
-                accessToken: pacientData.data.token,
-              };
+            if (!res.ok) {
+              // tenta ler corpo para ajudar no debug
+              const text = await res.text().catch(() => "");
+              console.warn(
+                `[auth] /pacient/login -> status=${res.status} body=${text}`
+              );
+              return null;
+            }
+
+            const data = (await res
+              .json()
+              .catch(() => null)) as ApiResponse | null;
+            if (data && (data.success || data.data)) return data;
+            return null;
+          };
+
+          // 1) se for email, tente { email, password }
+          let pacientData: ApiResponse | null = null;
+          if (loginValue.includes("@")) {
+            pacientData = await tryPacientLogin({
+              email: loginValue,
+              password: credentials.password,
+            });
+          }
+
+          // 2) se parecer CPF (apenas dígitos), tente { cpf, password }
+          if (!pacientData) {
+            const onlyDigits = loginValue.replace(/\D/g, "");
+            if (onlyDigits.length === 11) {
+              pacientData = await tryPacientLogin({
+                cpf: onlyDigits,
+                password: credentials.password,
+              });
             }
           }
 
+          // 3) fallback: tente { login, password } (compatibilidade)
+          if (!pacientData) {
+            pacientData = await tryPacientLogin({
+              login: loginValue,
+              password: credentials.password,
+            });
+          }
+
+          if (pacientData) {
+            return {
+              id: String(
+                pacientData.data?.pacient?.id || pacientData.data?.id || ""
+              ),
+              email: String(
+                pacientData.data?.pacient?.email ||
+                  pacientData.data?.email ||
+                  ""
+              ),
+              name: String(
+                pacientData.data?.pacient?.name || pacientData.data?.name || ""
+              ),
+              cpf: String(
+                pacientData.data?.pacient?.cpf || pacientData.data?.cpf || ""
+              ),
+              role: "pacient",
+              accessToken: String(pacientData.data?.token || ""),
+            } as unknown as NextAuthUser;
+          }
+
           // Tenta login como MÉDICO
-          const doctorResponse = await fetch(
-            `${API_BASE_URL}/api/doctor/login`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                login: credentials.login,
-                password: credentials.password,
-              }),
-            }
-          );
+          const doctorResponse = await fetch(`${API_BASE_URL}/doctor/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              login: credentials.login,
+              password: credentials.password,
+            }),
+          });
 
           if (doctorResponse.ok) {
-            const doctorData = await doctorResponse.json();
-            if (doctorData.success && doctorData.data) {
+            const doctorData = (await doctorResponse
+              .json()
+              .catch(() => null)) as ApiResponse | null;
+            if (doctorData && doctorData.data) {
+              const dd = doctorData.data as ApiResponse["data"] | undefined;
               return {
-                id: doctorData.data.doctor?.id || doctorData.data.id,
-                email: doctorData.data.doctor?.email || doctorData.data.email,
-                name: doctorData.data.doctor?.name || doctorData.data.name,
-                crm: String(doctorData.data.doctor?.CRM || doctorData.data.CRM),
-                specialty:
-                  doctorData.data.doctor?.specialty ||
-                  doctorData.data.specialty,
+                id: String(dd?.doctor?.id || dd?.id || ""),
+                email: String(dd?.doctor?.email || dd?.email || ""),
+                name: String(dd?.doctor?.name || dd?.name || ""),
                 role: "doctor",
-                accessToken: doctorData.data.token,
-              };
+                accessToken: String(dd?.token || ""),
+              } as unknown as NextAuthUser;
             }
           }
 
@@ -132,14 +209,26 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async jwt({ token, user }) {
+      // ✅ CORREÇÃO: Sem `any` - usando type assertion com CustomUser
       if (user) {
-        token.user = user;
-        token.accessToken = user.accessToken;
-        token.role = user.role;
+        const customUser = user as CustomUser;
+
+        token.user = {
+          id: customUser.id || "",
+          email: customUser.email || "",
+          name: customUser.name || "",
+          role: customUser.role || "pacient",
+          accessToken: customUser.accessToken || "",
+          cpf: customUser.cpf,
+          crm: customUser.crm,
+          specialty: customUser.specialty,
+        };
+
+        token.accessToken = customUser.accessToken;
+        token.role = customUser.role;
       }
       return token;
     },
-
     async session({ session, token }) {
       if (token.user) {
         session.user = {
@@ -154,7 +243,7 @@ export const authOptions: NextAuthOptions = {
   },
 
   pages: {
-    signIn: "/auth/login",
+    signIn: "/pacient/login",
     error: "/auth/error",
   },
 

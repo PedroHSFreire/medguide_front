@@ -1,4 +1,3 @@
-// components/views/pacient/SignIn.tsx - Login para Pacientes
 "use client";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
@@ -14,7 +13,7 @@ import {
   EyeOff,
 } from "lucide-react";
 
-export default function LoginPacients() {
+export default function DoctorSignIn() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     login: "",
@@ -44,11 +43,11 @@ export default function LoginPacients() {
       });
 
       if (result?.error) {
-        setError("Email/CPF ou senha incorretos");
+        setError("Email ou senha incorretos");
       } else if (result?.ok) {
         setSuccess(true);
         setTimeout(() => {
-          router.push("/pacient/dashboard");
+          router.push("/doctor/dashboard");
         }, 1500);
       }
     } catch (err) {
@@ -86,11 +85,9 @@ export default function LoginPacients() {
                 <Mail className="w-8 h-8 text-white" />
               </div>
               <h1 className="text-2xl font-bold text-gray-800 mb-2">
-                Login do Paciente
+                Login do Médico
               </h1>
-              <p className="text-gray-600">
-                Acesse sua conta para gerenciar consultas
-              </p>
+              <p className="text-gray-600">Acesse sua área de atendimento</p>
             </div>
 
             {error && (
@@ -114,10 +111,10 @@ export default function LoginPacients() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Email/CPF */}
+              {/* Email */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email ou CPF
+                  Email
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -126,7 +123,7 @@ export default function LoginPacients() {
                     name="login"
                     value={formData.login}
                     onChange={handleInputChange}
-                    placeholder="seu@email.com ou 123.456.789-00"
+                    placeholder="seu@email.com"
                     disabled={isSubmitting}
                     className="w-full text-black pl-12 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                     required
@@ -186,12 +183,12 @@ export default function LoginPacients() {
             {/* Divider */}
             <div className="mt-6 pt-6 border-t border-gray-200">
               <p className="text-center text-gray-600 text-sm">
-                Não tem conta?{" "}
+                É paciente?{" "}
                 <Link
-                  href="/pacient/register"
+                  href="/pacient/login"
                   className="text-blue-600 hover:text-blue-700 font-semibold"
                 >
-                  Criar conta
+                  Faça login como paciente
                 </Link>
               </p>
             </div>
@@ -202,10 +199,10 @@ export default function LoginPacients() {
                 📌 Credenciais de teste:
               </p>
               <p className="text-xs text-blue-800 mb-1">
-                Email: <code className="font-mono">demo@medguide.com</code>
+                Email: <code className="font-mono">doctor@medguide.com</code>
               </p>
               <p className="text-xs text-blue-800">
-                Senha: <code className="font-mono">demo123</code>
+                Senha: <code className="font-mono">doctor123</code>
               </p>
             </div>
           </div>

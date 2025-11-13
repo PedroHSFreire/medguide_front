@@ -1,32 +1,12 @@
-// types/next-auth.d.ts - VERSÃO CORRIGIDA
+// types/next-auth.d.ts - VERSÃO COMPLETA
 import NextAuth from "next-auth";
 
 declare module "next-auth" {
-  interface Session {
-    accessToken?: string;
-    role?: string;
-    user: {
-      id: string;
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
-      cpf?: string;
-      crm?: string;
-      specialty?: string;
-      phone?: string;
-      address?: string;
-      experience?: string;
-      education?: string;
-      bio?: string;
-    };
-  }
-
   interface User {
     id: string;
-    name?: string | null;
-    email?: string | null;
-    image?: string | null;
-    role?: string;
+    email: string;
+    name: string;
+    role: string;
     accessToken?: string;
     cpf?: string;
     crm?: string;
@@ -37,16 +17,13 @@ declare module "next-auth" {
     education?: string;
     bio?: string;
   }
-}
 
-declare module "next-auth/jwt" {
-  interface JWT {
-    accessToken?: string;
-    role?: string;
-    user?: {
+  interface Session {
+    user: {
       id: string;
-      name?: string | null;
-      email?: string | null;
+      email: string;
+      name: string;
+      role: string;
       cpf?: string;
       crm?: string;
       specialty?: string;
@@ -55,7 +32,25 @@ declare module "next-auth/jwt" {
       experience?: string;
       education?: string;
       bio?: string;
-      role?: string;
     };
+    accessToken?: string;
+    role?: string;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    user?: {
+      id: string;
+      email: string;
+      name: string;
+      role: string;
+      accessToken?: string;
+      cpf?: string;
+      crm?: string;
+      specialty?: string;
+    };
+    accessToken?: string;
+    role?: string;
   }
 }
