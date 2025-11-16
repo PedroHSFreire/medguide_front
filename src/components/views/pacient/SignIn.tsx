@@ -1,7 +1,6 @@
 // components/views/pacient/SignIn.tsx - Login para Pacientes
 "use client";
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -35,28 +34,81 @@ export default function LoginPacients() {
     e.preventDefault();
     setIsSubmitting(true);
     setError("");
+    setSuccess(false);
 
     try {
-      const result = await signIn("credentials", {
+      console.log("📤 Enviando dados para login:", {
         login: formData.login,
-        password: formData.password,
-        redirect: false,
+        passwordLength: formData.password.length,
       });
 
-      if (result?.error) {
-        setError("Email/CPF ou senha incorretos");
-      } else if (result?.ok) {
+      // 🔥 CORREÇÃO: Chamada direta para sua API
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/pacient/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            login: formData.login,
+            password: formData.password,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      console.log("📨 Resposta da API:", {
+        status: response.status,
+        data: data,
+      });
+
+      if (!response.ok) {
+        // Tratamento de erros específicos
+        if (response.status === 401) {
+          throw new Error("Email/CPF ou senha incorretos");
+        } else if (response.status === 400) {
+          throw new Error(data.error || "Dados inválidos");
+        } else if (response.status === 404) {
+          throw new Error("Usuário não encontrado");
+        } else {
+          throw new Error(data.error || "Erro ao fazer login");
+        }
+      }
+
+      // 🔥 CORREÇÃO: Login bem-sucedido
+      if (data.success && data.data?.token) {
         setSuccess(true);
+
+        // Salvar token no localStorage
+        localStorage.setItem("token", data.data.token);
+        localStorage.setItem("user", JSON.stringify(data.data.pacient));
+
+        console.log("✅ Login realizado com sucesso, token salvo");
+
+        // Redirecionar após breve delay
         setTimeout(() => {
           router.push("/pacient/dashboard");
         }, 1500);
+      } else {
+        throw new Error("Resposta inválida da API");
       }
-    } catch (err) {
-      setError("Erro ao fazer login. Tente novamente.");
-      console.error(err);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      console.error("❌ Erro no login:", err);
+      setError(err.message || "Erro ao fazer login. Tente novamente.");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Testar com usuário existente
+  const fillDemoCredentials = () => {
+    setFormData({
+      login: "pedro3@gmail.com",
+      password: "Senha123",
+    });
   };
 
   return (
@@ -170,7 +222,7 @@ export default function LoginPacients() {
               <button
                 type="submit"
                 disabled={isSubmitting || !formData.login || !formData.password}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-4 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <>
@@ -196,18 +248,45 @@ export default function LoginPacients() {
               </p>
             </div>
 
-            {/* Demo Credentials */}
+            {/* Credenciais de Teste */}
             <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
               <p className="text-xs font-semibold text-blue-900 mb-2">
-                📌 Credenciais de teste:
+                🧪 Credenciais para teste:
               </p>
-              <p className="text-xs text-blue-800 mb-1">
-                Email: <code className="font-mono">demo@medguide.com</code>
-              </p>
-              <p className="text-xs text-blue-800">
-                Senha: <code className="font-mono">demo123</code>
-              </p>
+              <div className="space-y-1">
+                <p className="text-xs text-blue-800">
+                  Use um usuário cadastrado ou{" "}
+                  <button
+                    type="button"
+                    onClick={fillDemoCredentials}
+                    className="text-blue-600 hover:text-blue-700 underline font-medium"
+                  >
+                    preencher automaticamente
+                  </button>
+                </p>
+                <p className="text-xs text-blue-800">
+                  Email:{" "}
+                  <code className="font-mono bg-blue-100 px-1 rounded">
+                    pedro3@gmail.com
+                  </code>
+                </p>
+                <p className="text-xs text-blue-800">
+                  Senha:{" "}
+                  <code className="font-mono bg-blue-100 px-1 rounded">
+                    Senha123
+                  </code>
+                </p>
+              </div>
             </div>
+
+            {/* Debug Info */}
+            {process.env.NODE_ENV === "development" && (
+              <div className="mt-4 p-3 bg-gray-100 rounded-lg">
+                <p className="text-xs text-gray-600">
+                  🔍 API: {process.env.NEXT_PUBLIC_API_URL}/api/pacient/login
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

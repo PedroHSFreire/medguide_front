@@ -15,15 +15,12 @@ import {
   CheckCircle2,
   ArrowLeft,
 } from "lucide-react";
-import PacientService from "../../../app/lib/service/pacientService";
-import type { AxiosErrorResponse } from "../../../app/lib/types/api";
 
 interface RegisterFormData {
   name: string;
   email: string;
   cpf: string;
   password: string;
-  confirmPassword: string;
 }
 
 interface ValidationErrors {
@@ -31,20 +28,17 @@ interface ValidationErrors {
   email?: string;
   cpf?: string;
   password?: string;
-  confirmPassword?: string;
 }
 
 export default function CadastroPaciente() {
   const router = useRouter();
 
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState<RegisterFormData>({
     name: "",
     email: "",
     cpf: "",
     password: "",
-    confirmPassword: "",
   });
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -69,30 +63,7 @@ export default function CadastroPaciente() {
     if (!cpf) return "CPF é obrigatório";
     const cleanCPF = cpf.replace(/\D/g, "");
     if (cleanCPF.length !== 11) return "CPF deve ter 11 dígitos";
-    if (/^(\d)\1{10}$/.test(cleanCPF)) return "CPF inválido";
-
-    // Validação básica de CPF
-    let sum = 0;
-    let remainder;
-
-    for (let i = 1; i <= 9; i++) {
-      sum = sum + parseInt(cleanCPF.substring(i - 1, i)) * (11 - i);
-    }
-
-    remainder = (sum * 10) % 11;
-    if (remainder === 10 || remainder === 11) remainder = 0;
-    if (remainder !== parseInt(cleanCPF.substring(9, 10)))
-      return "CPF inválido";
-
-    sum = 0;
-    for (let i = 1; i <= 10; i++) {
-      sum = sum + parseInt(cleanCPF.substring(i - 1, i)) * (12 - i);
-    }
-
-    remainder = (sum * 10) % 11;
-    if (remainder === 10 || remainder === 11) remainder = 0;
-    if (remainder !== parseInt(cleanCPF.substring(10, 11)))
-      return "CPF inválido";
+    return undefined; // Removeu a validação complexa do CPF
   };
 
   const validatePassword = (password: string): string | undefined => {
@@ -101,13 +72,6 @@ export default function CadastroPaciente() {
     if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
       return "Senha deve conter letras maiúsculas, minúsculas e números";
     }
-  };
-
-  const validateConfirmPassword = (
-    confirmPassword: string
-  ): string | undefined => {
-    if (!confirmPassword) return "Confirme sua senha";
-    if (confirmPassword !== formData.password) return "As senhas não coincidem";
   };
 
   const validateForm = (): boolean => {
@@ -125,11 +89,6 @@ export default function CadastroPaciente() {
     const passwordError = validatePassword(formData.password);
     if (passwordError) newErrors.password = passwordError;
 
-    const confirmPasswordError = validateConfirmPassword(
-      formData.confirmPassword
-    );
-    if (confirmPasswordError) newErrors.confirmPassword = confirmPasswordError;
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -144,8 +103,6 @@ export default function CadastroPaciente() {
         return validateCPF(value);
       case "password":
         return validatePassword(value);
-      case "confirmPassword":
-        return validateConfirmPassword(value);
       default:
         return undefined;
     }
@@ -185,6 +142,7 @@ export default function CadastroPaciente() {
     setErrors((prev) => ({ ...prev, [name]: error }));
   };
 
+  // CORREÇÃO DA URL DA API
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTouched({
@@ -192,7 +150,6 @@ export default function CadastroPaciente() {
       email: true,
       cpf: true,
       password: true,
-      confirmPassword: true,
     });
     setSubmitError("");
     setSubmitSuccess(false);
@@ -202,15 +159,36 @@ export default function CadastroPaciente() {
     setIsSubmitting(true);
 
     try {
-      const { confirmPassword, ...registerData } = formData;
-      const pacientService = new PacientService(); // Criando instância
-      const response = await pacientService.registerPacient({
-        // Chamando na instância - CORRETO!
-        ...registerData,
-        cpf: registerData.cpf.replace(/\D/g, ""),
+      const cpfNumerico = formData.cpf.replace(/\D/g, "");
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+      const baseUrl = apiUrl?.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
+      const endpoint = `${baseUrl}/api/pacient/register`;
+
+      console.log("Tentando registrar em:", endpoint);
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          cpf: cpfNumerico,
+          password: formData.password,
+        }),
       });
 
-      console.log("✅ Cadastro bem-sucedido:", response.data);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || data.error || "Erro ao realizar cadastro"
+        );
+      }
+
       setSubmitSuccess(true);
 
       setTimeout(() => {
@@ -218,17 +196,27 @@ export default function CadastroPaciente() {
       }, 2000);
     } catch (error: unknown) {
       console.error("Erro no cadastro:", error);
-      const axiosError = error as AxiosErrorResponse;
 
-      if (axiosError.response?.status === 409) {
-        setSubmitError("CPF ou e-mail já cadastrado.");
-      } else if (axiosError.response?.status === 400) {
-        setSubmitError("Dados inválidos. Verifique os campos.");
-      } else if (axiosError.response?.data?.error) {
-        setSubmitError(axiosError.response.data.error);
-      } else {
-        setSubmitError("Erro ao realizar cadastro. Tente novamente.");
+      let errorMessage = "Erro ao realizar cadastro. Tente novamente.";
+
+      if (error instanceof Error) {
+        if (
+          error.message.includes("409") ||
+          error.message.toLowerCase().includes("já existe") ||
+          error.message.toLowerCase().includes("already exists")
+        ) {
+          errorMessage = "CPF ou e-mail já cadastrado.";
+        } else if (error.message.includes("400")) {
+          errorMessage = "Dados inválidos. Verifique os campos.";
+        } else if (error.message.includes("404")) {
+          errorMessage =
+            "Serviço indisponível no momento. Tente novamente mais tarde.";
+        } else {
+          errorMessage = error.message;
+        }
       }
+
+      setSubmitError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -239,12 +227,10 @@ export default function CadastroPaciente() {
     !errors.email &&
     !errors.cpf &&
     !errors.password &&
-    !errors.confirmPassword &&
     formData.name &&
     formData.email &&
     formData.cpf &&
-    formData.password &&
-    formData.confirmPassword;
+    formData.password;
 
   return (
     <div className="min-h-screen bg-linear-to-br from-blue-50 to-teal-100 flex flex-col">
@@ -441,7 +427,7 @@ export default function CadastroPaciente() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-12 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
                   >
                     {showPassword ? (
                       <EyeOff className="w-5 h-5" />
@@ -449,67 +435,11 @@ export default function CadastroPaciente() {
                       <Eye className="w-5 h-5" />
                     )}
                   </button>
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    {errors.password ? (
-                      <AlertCircle className="w-5 h-5 text-red-500" />
-                    ) : touched.password && !errors.password ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-500" />
-                    ) : null}
-                  </div>
                 </div>
                 {errors.password && (
                   <p className="text-red-500 text-sm mt-1 flex items-center">
                     <AlertCircle className="w-4 h-4 mr-1" />
                     {errors.password}
-                  </p>
-                )}
-              </div>
-
-              {/* Confirmar Senha */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirmar Senha
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    onBlur={handleInputBlur}
-                    placeholder="Confirme sua senha"
-                    className={`w-full pl-12 text-black pr-12 py-3 bg-gray-50 border rounded-xl focus:outline-none transition-all duration-200 ${
-                      errors.confirmPassword
-                        ? "border-red-500 focus:ring-2 focus:ring-red-500"
-                        : touched.confirmPassword && !errors.confirmPassword
-                        ? "border-green-500 focus:ring-2 focus:ring-green-500"
-                        : "border-gray-200 focus:ring-2 focus:ring-blue-500"
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-12 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
-                    )}
-                  </button>
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    {errors.confirmPassword ? (
-                      <AlertCircle className="w-5 h-5 text-red-500" />
-                    ) : touched.confirmPassword && !errors.confirmPassword ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-500" />
-                    ) : null}
-                  </div>
-                </div>
-                {errors.confirmPassword && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center">
-                    <AlertCircle className="w-4 h-4 mr-1" />
-                    {errors.confirmPassword}
                   </p>
                 )}
               </div>

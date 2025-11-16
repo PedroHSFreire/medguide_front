@@ -2,12 +2,10 @@ import axios from "axios";
 import { getSession } from "next-auth/react";
 
 const axiosInstance = axios.create({
-  baseURL:
-    process.env.NEXT_PUBLIC_API_URL || "https://medguide-y0j4.onrender.com/",
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
 });
 
-// Interceptor para adicionar token de autenticação
-axiosInstance.interceptors.request.use(
+export default axiosInstance.interceptors.request.use(
   async (config) => {
     try {
       const session = await getSession();
@@ -15,11 +13,9 @@ axiosInstance.interceptors.request.use(
         config.headers.Authorization = `Bearer ${session.accessToken}`;
       }
     } catch (error) {
-      console.warn("Não foi possível obter sessão de autenticação");
+      console.warn("Não foi possível obter sessão de autenticação", error);
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
-
-export default axiosInstance;

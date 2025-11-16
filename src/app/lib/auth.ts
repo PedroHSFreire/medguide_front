@@ -1,12 +1,11 @@
-// lib/auth.ts - VERSÃO SIMPLIFICADA E CORRIGIDA
+// lib/auth.ts - VERSÃO CORRIGIDA E FUNCIONAL
 import NextAuth, {
   type NextAuthOptions,
   User as NextAuthUser,
 } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://medguide-y0j4.onrender.com";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 interface CustomUser extends NextAuthUser {
   role: string;
@@ -20,17 +19,33 @@ interface CustomUser extends NextAuthUser {
   education?: string;
   bio?: string;
 }
+interface BaseUserInfo {
+  id?: string;
+  email?: string;
+  name?: string;
+}
+interface PackentUserInfo extends BaseUserInfo {
+  crm?: string;
+  specialty?: string;
+}
 
 type ApiResponse = {
   success?: boolean;
   data?: {
-    pacient?: { id?: string; email?: string; name?: string; cpf?: string };
+    pacient?: {
+      id?: string;
+      email?: string;
+      name?: string;
+      cpf?: string;
+      token?: string;
+    };
     doctor?: {
       id?: string;
       email?: string;
       name?: string;
       CRM?: string;
       specialty?: string;
+      token?: string;
     };
     id?: string;
     email?: string;
@@ -38,7 +53,10 @@ type ApiResponse = {
     cpf?: string;
     token?: string;
   };
+  token?: string;
+  message?: string;
 };
+
 const hardcodedUsers = [
   {
     login: "demo@medguide.com",
@@ -78,6 +96,7 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         console.log("🔐 Tentando autenticação para:", credentials?.login);
 
+        // 1. Primeiro verifica usuários pré-programados
         const hardcodedUser = hardcodedUsers.find(
           (user) =>
             user.login === credentials?.login &&
@@ -94,113 +113,110 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          // Tenta login como PACIENTE
-          // O backend pode esperar { email, password } ou { cpf, password }.
-          const loginValue = String(credentials.login).trim();
+          // 🔥 CORREÇÃO: Função simplificada para login de paciente
+          const tryPacientLogin = async (): Promise<ApiResponse | null> => {
+            try {
+              console.log("🔄 Tentando login paciente...");
+              const response = await fetch(`${API_BASE_URL}/pacient/login`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  login: credentials!.login, // ← ENVIA COMO "login"
+                  password: credentials!.password,
+                }),
+              });
 
-          const tryPacientLogin = async (
-            payload: Record<string, unknown>
-          ): Promise<ApiResponse | null> => {
-            const res = await fetch(`${API_BASE_URL}/pacient/login`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
-            });
+              console.log("📊 Status da resposta:", response.status);
 
-            if (!res.ok) {
-              // tenta ler corpo para ajudar no debug
-              const text = await res.text().catch(() => "");
-              console.warn(
-                `[auth] /pacient/login -> status=${res.status} body=${text}`
-              );
+              if (!response.ok) {
+                const errorText = await response.text();
+                console.log("❌ Login paciente falhou:", errorText);
+                return null;
+              }
+
+              const data = await response.json();
+              console.log("✅ Resposta do login paciente:", data);
+              return data;
+            } catch (error) {
+              console.error("💥 Erro no login paciente:", error);
               return null;
             }
-
-            const data = (await res
-              .json()
-              .catch(() => null)) as ApiResponse | null;
-            if (data && (data.success || data.data)) return data;
-            return null;
           };
 
-          // 1) se for email, tente { email, password }
-          let pacientData: ApiResponse | null = null;
-          if (loginValue.includes("@")) {
-            pacientData = await tryPacientLogin({
-              email: loginValue,
-              password: credentials.password,
-            });
-          }
-
-          // 2) se parecer CPF (apenas dígitos), tente { cpf, password }
-          if (!pacientData) {
-            const onlyDigits = loginValue.replace(/\D/g, "");
-            if (onlyDigits.length === 11) {
-              pacientData = await tryPacientLogin({
-                cpf: onlyDigits,
-                password: credentials.password,
+          // 🔥 CORREÇÃO: Função simplificada para login de médico
+          const tryDoctorLogin = async (): Promise<ApiResponse | null> => {
+            try {
+              console.log("🔄 Tentando login médico...");
+              const response = await fetch(`${API_BASE_URL}/doctor/login`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  login: credentials!.login, // ← ENVIA COMO "login"
+                  password: credentials!.password,
+                }),
               });
+
+              console.log("📊 Status da resposta médico:", response.status);
+
+              if (!response.ok) {
+                const errorText = await response.text();
+                console.log("❌ Login médico falhou:", errorText);
+                return null;
+              }
+
+              const data = await response.json();
+              console.log("✅ Resposta do login médico:", data);
+              return data;
+            } catch (error) {
+              console.error("💥 Erro no login médico:", error);
+              return null;
             }
+          };
+
+          // 🔥 CORREÇÃO: Tenta primeiro como paciente
+          let userData: ApiResponse | null = await tryPacientLogin();
+
+          // Se paciente falhou, tenta como médico
+          if (!userData || !userData.success) {
+            console.log("🔄 Tentando como médico...");
+            userData = await tryDoctorLogin();
           }
 
-          // 3) fallback: tente { login, password } (compatibilidade)
-          if (!pacientData) {
-            pacientData = await tryPacientLogin({
-              login: loginValue,
-              password: credentials.password,
-            });
-          }
+          // Se algum login funcionou
+          if (userData && userData.success) {
+            console.log("✅ Login bem-sucedido no backend");
 
-          if (pacientData) {
-            return {
-              id: String(
-                pacientData.data?.pacient?.id || pacientData.data?.id || ""
-              ),
-              email: String(
-                pacientData.data?.pacient?.email ||
-                  pacientData.data?.email ||
-                  ""
-              ),
-              name: String(
-                pacientData.data?.pacient?.name || pacientData.data?.name || ""
-              ),
-              cpf: String(
-                pacientData.data?.pacient?.cpf || pacientData.data?.cpf || ""
-              ),
-              role: "pacient",
-              accessToken: String(pacientData.data?.token || ""),
-            } as unknown as NextAuthUser;
-          }
+            // Determina se é paciente ou médico
+            const isPacient = !!userData.data?.pacient;
+            const userInfo = isPacient
+              ? userData.data?.pacient
+              : userData.data?.doctor;
 
-          // Tenta login como MÉDICO
-          const doctorResponse = await fetch(`${API_BASE_URL}/doctor/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              login: credentials.login,
-              password: credentials.password,
-            }),
-          });
-
-          if (doctorResponse.ok) {
-            const doctorData = (await doctorResponse
-              .json()
-              .catch(() => null)) as ApiResponse | null;
-            if (doctorData && doctorData.data) {
-              const dd = doctorData.data as ApiResponse["data"] | undefined;
+            if (userInfo) {
+              const user = userInfo as PackentUserInfo;
               return {
-                id: String(dd?.doctor?.id || dd?.id || ""),
-                email: String(dd?.doctor?.email || dd?.email || ""),
-                name: String(dd?.doctor?.name || dd?.name || ""),
-                role: "doctor",
-                accessToken: String(dd?.token || ""),
-              } as unknown as NextAuthUser;
+                id: user.id || "",
+                email: user.email || "",
+                name: user.name || "",
+                role: isPacient ? "pacient" : "doctor",
+                accessToken:
+                  userData.data?.token || userData.token || "default-token",
+                ...(isPacient && {
+                  crm: user.crm || "",
+                  specialty: user.specialty || "",
+                }),
+              } as NextAuthUser;
             }
           }
 
+          console.log("❌ Todas as tentativas de login falharam");
           return null;
         } catch (error) {
-          console.error("🚨 Erro no authorize:", error);
+          console.error("🚨 Erro crítico no authorize:", error);
           return null;
         }
       },
@@ -209,7 +225,6 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async jwt({ token, user }) {
-      // ✅ CORREÇÃO: Sem `any` - usando type assertion com CustomUser
       if (user) {
         const customUser = user as CustomUser;
 
@@ -229,6 +244,7 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
+
     async session({ session, token }) {
       if (token.user) {
         session.user = {
@@ -243,17 +259,16 @@ export const authOptions: NextAuthOptions = {
   },
 
   pages: {
-    signIn: "/pacient/login",
+    signIn: "/pacient/login", // ← CORRIGIDO: URL do frontend
     error: "/auth/error",
   },
 
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60,
+    maxAge: 30 * 24 * 60 * 60, // 30 dias
   },
 
   debug: process.env.NODE_ENV === "development",
 };
 
-// Exportação CORRETA - apenas isso
 export default NextAuth(authOptions);

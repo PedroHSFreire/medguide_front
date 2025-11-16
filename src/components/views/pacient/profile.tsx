@@ -48,7 +48,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push("/pacient/login");
+      router.push("/api/pacient/login");
       return;
     }
 
