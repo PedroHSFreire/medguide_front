@@ -248,37 +248,6 @@ export default function LoginPacients() {
               </p>
             </div>
 
-            {/* Credenciais de Teste */}
-            <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
-              <p className="text-xs font-semibold text-blue-900 mb-2">
-                🧪 Credenciais para teste:
-              </p>
-              <div className="space-y-1">
-                <p className="text-xs text-blue-800">
-                  Use um usuário cadastrado ou{" "}
-                  <button
-                    type="button"
-                    onClick={fillDemoCredentials}
-                    className="text-blue-600 hover:text-blue-700 underline font-medium"
-                  >
-                    preencher automaticamente
-                  </button>
-                </p>
-                <p className="text-xs text-blue-800">
-                  Email:{" "}
-                  <code className="font-mono bg-blue-100 px-1 rounded">
-                    pedro3@gmail.com
-                  </code>
-                </p>
-                <p className="text-xs text-blue-800">
-                  Senha:{" "}
-                  <code className="font-mono bg-blue-100 px-1 rounded">
-                    Senha123
-                  </code>
-                </p>
-              </div>
-            </div>
-
             {/* Debug Info */}
             {process.env.NODE_ENV === "development" && (
               <div className="mt-4 p-3 bg-gray-100 rounded-lg">
