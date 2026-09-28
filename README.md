@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MedGuide — Front-end
 
-## Getting Started
+Aplicação web do MedGuide para conectar pacientes a profissionais de saúde. Oferece fluxos separados para pacientes e médicos, busca de profissionais e gestão de consultas. A API fica no repositório [Medguide](https://github.com/PedroHSFreire/Medguide).
 
-First, run the development server:
+## Funcionalidades
+
+- Páginas iniciais e de dúvidas.
+- Cadastro e login separados para pacientes e médicos.
+- Painéis e páginas de perfil para os dois tipos de usuário.
+- Busca de médicos e especialidades.
+- Criação, consulta e cancelamento de agendamentos.
+- Proteção de páginas e gerenciamento de sessão no cliente.
+
+## Tecnologias
+
+- Next.js 16 com App Router e React 19.
+- TypeScript, Tailwind CSS 4 e ESLint.
+- `fetch`/Axios para comunicação com a API e NextAuth para integração de autenticação.
+
+## Requisitos e execução
+
+Use uma versão do Node.js compatível com Next.js 16 e npm.
 
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra `http://localhost:3000`. Para conferir a versão de produção e as regras de lint:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build
+npm run start
+npm run lint
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`npm run start` serve a compilação existente; execute `npm run build` antes.
 
-## Learn More
+## Configuração
 
-To learn more about Next.js, take a look at the following resources:
+O cliente lê as seguintes variáveis de ambiente:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Variável | Finalidade |
+| --- | --- |
+| `NEXT_PUBLIC_API_URL` | URL base do back-end, sem o sufixo `/api` (por exemplo, `http://localhost:8080`) |
+| `NEXTAUTH_URL` | URL pública da aplicação usada pela configuração de autenticação |
+| `NEXTAUTH_SECRET` | Segredo da sessão NextAuth; use valor aleatório e mantenha fora do Git |
+| `DATABASE_URL` | Configuração de banco usada pela camada de autenticação, se aplicável |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Copie `.env.example` para `.env.local` e preencha os valores do seu ambiente. Nunca publique credenciais ou segredos. O arquivo `.env.local` que estava rastreado foi removido da versão atual e passou a ser ignorado pelo Git; como os valores anteriores permanecem no histórico, considere `NEXTAUTH_SECRET` e as credenciais associadas ao `DATABASE_URL` expostos e rotacione-os. `DATABASE_URL` está presente na configuração de autenticação; a persistência principal dos cadastros e consultas é feita pelo SQLite no back-end.
 
-## Deploy on Vercel
+## Organização do código
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```text
+src/app/
+  doctor/                 login, cadastro, painel e perfil do médico
+  pacient/                login, cadastro, painel e perfil do paciente
+  doubts/                 página de dúvidas
+  api/auth/[...nextauth]/ integração do NextAuth
+  lib/                    autenticação, hooks, serviços e tipos da API
+src/components/           componentes e telas compartilhados
+public/                   recursos estáticos
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+As páginas vivem no App Router. Os módulos em `src/app/lib/service` concentram chamadas HTTP de autenticação, perfis, busca e consultas; hooks em `src/app/lib/hooks` conectam essas operações às páginas. O estado de autenticação e os componentes de acesso protegido ficam em `lib/auth*`, `useAuth` e `ProtectedRoute`.
+
+## Integração com o back-end
+
+O front-end espera a API no formato `${NEXT_PUBLIC_API_URL}/api`. Entre os caminhos consumidos estão:
+
+- `/doctor/register`, `/doctor/login`, `/doctor/profile`, `/doctor/search` e `/doctor/specialties`.
+- `/pacient/register`, `/pacient/login` e `/pacient/profile`.
+- `/appointments` e caminhos para buscar ou cancelar consultas.
+
+As chamadas autenticadas obtêm o token armazenado no navegador e o enviam como `Authorization: Bearer <token>`. Consulte o README do back-end para rotas disponíveis e campos esperados.
+
+## Pontos encontrados na avaliação
+
+- O front chama `/api/appointments/patient/:id` em um serviço, enquanto o back registra `/api/appointments/pacient/:patientId` (grafia e parâmetro diferentes). A listagem de consultas do paciente pode não funcionar até os caminhos serem alinhados.
+- Há mais de um serviço de busca de médicos e agendamentos com contratos parcialmente diferentes. Ao alterar a API, confira todos os módulos consumidores.
+- A integração NextAuth e a autenticação própria via token no `localStorage` coexistem no código. Revise qual fluxo é a fonte oficial de sessão antes de ampliar o uso.
+- O `.env.local` foi removido da versão atual do Git e passou a ser ignorado, mas continua no histórico anterior. Segredos que já foram publicados precisam ser rotacionados; removê-los em um commit futuro não apaga o histórico.
+- Não foi encontrado script de testes; os scripts disponíveis são `dev`, `build`, `start` e `lint`.
