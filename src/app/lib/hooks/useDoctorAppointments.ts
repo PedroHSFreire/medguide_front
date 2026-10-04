@@ -22,6 +22,12 @@ export interface DoctorAppointment {
   created?: string;
 }
 
+export interface ClinicalRecordData {
+  diagnosis?: string | null;
+  prescription?: string | null;
+  doctor_notes?: string | null;
+}
+
 interface UseDoctorAppointmentsReturn {
   appointments: DoctorAppointment[];
   loading: boolean;
@@ -30,6 +36,10 @@ interface UseDoctorAppointmentsReturn {
   updateAppointmentStatus: (
     appointmentId: string,
     status: DoctorAppointment["status"]
+  ) => Promise<void>;
+  updateAppointmentClinical: (
+    appointmentId: string,
+    clinical: ClinicalRecordData
   ) => Promise<void>;
 }
 
@@ -127,6 +137,67 @@ export const useDoctorAppointments = (
     []
   );
 
+  const updateAppointmentClinical = useCallback(
+    async (appointmentId: string, clinical: ClinicalRecordData) => {
+      try {
+        const token = localStorage.getItem("token");
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+        const baseUrl = apiUrl?.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
+        const url = `${baseUrl}/api/appointments/${appointmentId}`;
+
+        const payload = {
+          diagnosis:
+            clinical.diagnosis === null || clinical.diagnosis === undefined
+              ? null
+              : clinical.diagnosis.trim() || null,
+          prescription:
+            clinical.prescription === null ||
+            clinical.prescription === undefined
+              ? null
+              : clinical.prescription.trim() || null,
+          doctor_notes:
+            clinical.doctor_notes === null ||
+            clinical.doctor_notes === undefined
+              ? null
+              : clinical.doctor_notes.trim() || null,
+        };
+
+        const response = await fetch(url, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error("Não autorizado. Faça login novamente.");
+          }
+          throw new Error(`Erro ${response.status}: ${response.statusText}`);
+        }
+
+        setAppointments((prev) =>
+          prev.map((apt) =>
+            apt.id === appointmentId
+              ? {
+                  ...apt,
+                  diagnosis: payload.diagnosis ?? undefined,
+                  prescription: payload.prescription ?? undefined,
+                  doctor_notes: payload.doctor_notes ?? undefined,
+                }
+              : apt
+          )
+        );
+      } catch (err) {
+        console.error("❌ Erro ao atualizar atendimento clínico:", err);
+        throw err;
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     fetchAppointments();
   }, [fetchAppointments]);
@@ -148,5 +219,6 @@ export const useDoctorAppointments = (
     error,
     refetch: fetchAppointments,
     updateAppointmentStatus,
+    updateAppointmentClinical,
   };
 };

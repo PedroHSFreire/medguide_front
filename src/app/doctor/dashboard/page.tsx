@@ -16,8 +16,12 @@ import {
   Phone,
   MapPin,
   RefreshCw,
+  FileText,
 } from "lucide-react";
 import { useDoctorAppointments } from "../../lib/hooks/useDoctorAppointments";
+import ClinicalRecordModal, {
+  ClinicalRecordFields,
+} from "../../../components/ClinicalRecordModal";
 
 interface ExamRequest {
   id: string;
@@ -70,6 +74,7 @@ export default function DoctorDashboard() {
     error: appointmentsError,
     refetch: refetchAppointments,
     updateAppointmentStatus,
+    updateAppointmentClinical,
   } = useDoctorAppointments(session?.user?.id);
 
   const [examRequests, setExamRequests] = useState<ExamRequest[]>([]);
@@ -80,6 +85,13 @@ export default function DoctorDashboard() {
     "appointments"
   );
   const [refreshing, setRefreshing] = useState(false);
+  const [clinicalModalAppointment, setClinicalModalAppointment] = useState<{
+    id: string;
+    patientName: string;
+    diagnosis?: string;
+    prescription?: string;
+    doctor_notes?: string;
+  } | null>(null);
 
   // Converter agendamentos reais para o formato do front-end
   const mappedAppointments = useMemo(() => {
@@ -172,6 +184,25 @@ export default function DoctorDashboard() {
     [updateAppointmentStatus]
   );
 
+  const handleSaveClinicalRecord = useCallback(
+    async (data: ClinicalRecordFields) => {
+      if (!clinicalModalAppointment) return;
+      await updateAppointmentClinical(clinicalModalAppointment.id, data);
+    },
+    [clinicalModalAppointment, updateAppointmentClinical]
+  );
+
+  const hasClinicalContent = (appointment: {
+    diagnosis?: string;
+    prescription?: string;
+    doctor_notes?: string;
+  }) =>
+    Boolean(
+      appointment.diagnosis ||
+        appointment.prescription ||
+        appointment.doctor_notes
+    );
+
   // Funções para exames (mantidas do código original)
   const handleCompleteExam = useCallback(
     (examId: string) => {
@@ -258,10 +289,10 @@ export default function DoctorDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-xl md:text-3xl font-bold text-gray-900">
                 Dashboard do Médico
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className="text-gray-600 mt-1 text-sm md:text-base">
                 Dr(a). {session.user?.name || "Médico"}
               </p>
             </div>
@@ -278,7 +309,7 @@ export default function DoctorDashboard() {
               </button>
               <button
                 onClick={() => router.push("/doctor/profile")}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                className="hidden md:flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
               >
                 <User className="w-5 h-5" />
                 Perfil
@@ -601,20 +632,63 @@ export default function DoctorDashboard() {
                       )}
 
                       {appointment.status === "accepted" && (
-                        <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
-                          <span className="inline-flex items-center gap-2 text-green-600 font-semibold">
-                            <CheckCircle2 className="w-5 h-5" />
-                            Consulta Aceita
-                          </span>
-                          <button
-                            onClick={() =>
-                              handleCompleteAppointment(appointment.id)
-                            }
-                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                            Concluir
-                          </button>
+                        <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
+                          <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <span className="inline-flex items-center gap-2 text-green-600 font-semibold">
+                              <CheckCircle2 className="w-5 h-5" />
+                              Consulta Aceita
+                            </span>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() =>
+                                  setClinicalModalAppointment({
+                                    id: appointment.id,
+                                    patientName: appointment.patientName,
+                                    diagnosis: appointment.diagnosis,
+                                    prescription: appointment.prescription,
+                                    doctor_notes: appointment.doctor_notes,
+                                  })
+                                }
+                                className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                              >
+                                <FileText className="w-4 h-4" />
+                                {hasClinicalContent(appointment)
+                                  ? "Editar atendimento"
+                                  : "Registrar atendimento"}
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleCompleteAppointment(appointment.id)
+                                }
+                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                                Concluir
+                              </button>
+                            </div>
+                          </div>
+                          {hasClinicalContent(appointment) && (
+                            <div className="text-sm text-gray-600 space-y-1 bg-white rounded-lg p-3 border border-gray-100">
+                              {appointment.diagnosis && (
+                                <p>
+                                  <strong>Diagnóstico:</strong>{" "}
+                                  {appointment.diagnosis}
+                                </p>
+                              )}
+                              {appointment.prescription && (
+                                <p>
+                                  <strong>Prescrição:</strong>{" "}
+                                  {appointment.prescription}
+                                </p>
+                              )}
+                              {appointment.doctor_notes && (
+                                <p>
+                                  <strong>Observações:</strong>{" "}
+                                  {appointment.doctor_notes}
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -628,15 +702,50 @@ export default function DoctorDashboard() {
                       )}
 
                       {appointment.status === "completed" && (
-                        <div className="mt-4 pt-4 border-t border-gray-200">
-                          <span className="inline-flex items-center gap-2 text-purple-600 font-semibold">
-                            <CheckCircle2 className="w-5 h-5" />
-                            Consulta Realizada
-                          </span>
-                          {appointment.diagnosis && (
-                            <div className="mt-2 text-sm text-gray-600">
-                              <strong>Diagnóstico:</strong>{" "}
-                              {appointment.diagnosis}
+                        <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
+                          <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <span className="inline-flex items-center gap-2 text-purple-600 font-semibold">
+                              <CheckCircle2 className="w-5 h-5" />
+                              Consulta Realizada
+                            </span>
+                            <button
+                              onClick={() =>
+                                setClinicalModalAppointment({
+                                  id: appointment.id,
+                                  patientName: appointment.patientName,
+                                  diagnosis: appointment.diagnosis,
+                                  prescription: appointment.prescription,
+                                  doctor_notes: appointment.doctor_notes,
+                                })
+                              }
+                              className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                            >
+                              <FileText className="w-4 h-4" />
+                              {hasClinicalContent(appointment)
+                                ? "Editar atendimento"
+                                : "Registrar atendimento"}
+                            </button>
+                          </div>
+                          {hasClinicalContent(appointment) && (
+                            <div className="text-sm text-gray-600 space-y-1 bg-white rounded-lg p-3 border border-gray-100">
+                              {appointment.diagnosis && (
+                                <p>
+                                  <strong>Diagnóstico:</strong>{" "}
+                                  {appointment.diagnosis}
+                                </p>
+                              )}
+                              {appointment.prescription && (
+                                <p>
+                                  <strong>Prescrição:</strong>{" "}
+                                  {appointment.prescription}
+                                </p>
+                              )}
+                              {appointment.doctor_notes && (
+                                <p>
+                                  <strong>Observações:</strong>{" "}
+                                  {appointment.doctor_notes}
+                                </p>
+                              )}
                             </div>
                           )}
                         </div>
@@ -649,6 +758,18 @@ export default function DoctorDashboard() {
           </div>
         )}
       </main>
+
+      <ClinicalRecordModal
+        isOpen={!!clinicalModalAppointment}
+        onClose={() => setClinicalModalAppointment(null)}
+        patientName={clinicalModalAppointment?.patientName}
+        initialValues={{
+          diagnosis: clinicalModalAppointment?.diagnosis,
+          prescription: clinicalModalAppointment?.prescription,
+          doctor_notes: clinicalModalAppointment?.doctor_notes,
+        }}
+        onSave={handleSaveClinicalRecord}
+      />
     </div>
   );
 }

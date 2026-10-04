@@ -107,15 +107,17 @@ export default function PacientDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-xl md:text-3xl font-bold text-gray-900">
                 Dashboard do Paciente
               </h1>
-              <p className="text-gray-600 mt-1">Bem-vindo(a), {user.name}!</p>
+              <p className="text-gray-600 mt-1 text-sm md:text-base">
+                Bem-vindo(a), {user.name}!
+              </p>
             </div>
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => router.push("/pacient/profile")}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                className="hidden md:flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
               >
                 <User className="w-5 h-5" />
                 Perfil
@@ -378,6 +380,32 @@ function AppointmentCard({ appointment }: { appointment: any }) {
               <strong>Motivo:</strong> {appointment.symptoms}
             </p>
           )}
+          {(appointment.status === "realizada" ||
+            appointment.status === "completed") &&
+            (appointment.diagnosis ||
+              appointment.prescription ||
+              appointment.doctor_notes) && (
+              <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
+                <p className="text-sm font-semibold text-gray-800">
+                  Histórico do atendimento
+                </p>
+                {appointment.diagnosis && (
+                  <p className="text-sm text-gray-600">
+                    <strong>Diagnóstico:</strong> {appointment.diagnosis}
+                  </p>
+                )}
+                {appointment.prescription && (
+                  <p className="text-sm text-gray-600">
+                    <strong>Prescrição:</strong> {appointment.prescription}
+                  </p>
+                )}
+                {appointment.doctor_notes && (
+                  <p className="text-sm text-gray-600">
+                    <strong>Observações:</strong> {appointment.doctor_notes}
+                  </p>
+                )}
+              </div>
+            )}
         </div>
       </div>
     </div>
