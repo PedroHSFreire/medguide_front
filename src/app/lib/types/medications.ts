@@ -18,13 +18,3 @@ export type CreateMedicationBody = {
 };
 
 export type UpdateMedicationBody = Partial<CreateMedicationBody>;
-
-export type PushSubscriptionPayload = {
-  endpoint: string;
-  expirationTime?: number | null;
-  keys: {
-    p256dh: string;
-    auth: string;
-  };
-  userAgent?: string;
-};

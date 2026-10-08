@@ -197,7 +197,7 @@ export default function PacientDashboard() {
                   Lembretes
                 </p>
                 <p className="text-sm text-teal-700 mt-1">
-                  Gerenciar horários e notificações
+                  Gerenciar horários de medicamentos
                 </p>
               </div>
               <Pill className="w-12 h-12 text-teal-600 opacity-20" />

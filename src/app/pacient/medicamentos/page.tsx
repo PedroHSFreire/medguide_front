@@ -1,11 +1,9 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Bell,
-  BellOff,
   Clock,
   Loader2,
   Pencil,
@@ -15,7 +13,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useMedications } from "../../lib/hooks/useMedications";
-import { usePushNotifications } from "../../lib/hooks/usePushNotifications";
 import type { Medication } from "../../lib/types/medications";
 
 type FormState = {
@@ -44,15 +41,6 @@ export default function MedicamentosPage() {
     toggleActive,
     remove,
   } = useMedications(Boolean(isAuthenticated && user));
-  const {
-    status: pushStatus,
-    busy: pushBusy,
-    error: pushError,
-    iosNeedsInstall,
-    subscribe,
-    unsubscribe,
-    sendTest,
-  } = usePushNotifications();
 
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -66,25 +54,6 @@ export default function MedicamentosPage() {
       router.push("/pacient/login");
     }
   }, [authLoading, isAuthenticated, router]);
-
-  const pushHelp = useMemo(() => {
-    switch (pushStatus) {
-      case "unsupported":
-        return "Este navegador não suporta notificações push.";
-      case "missing-vapid":
-        return "Configure NEXT_PUBLIC_VAPID_PUBLIC_KEY para ativar lembretes.";
-      case "denied":
-        return "Permissão negada. Reative nas configurações do navegador.";
-      case "subscribed":
-        return "Lembretes ativados neste dispositivo.";
-      case "unsubscribed":
-        return "Permissão concedida. Ative para receber lembretes.";
-      case "default":
-        return "Ative para receber avisos mesmo com o app fechado.";
-      default:
-        return "Verificando suporte a notificações...";
-    }
-  }, [pushStatus]);
 
   if (authLoading) {
     return (
@@ -187,17 +156,6 @@ export default function MedicamentosPage() {
     }
   };
 
-  const canActivate =
-    pushStatus === "default" ||
-    pushStatus === "unsubscribed" ||
-    pushStatus === "subscribed";
-  const activateDisabled =
-    pushBusy ||
-    pushStatus === "unsupported" ||
-    pushStatus === "missing-vapid" ||
-    pushStatus === "denied" ||
-    pushStatus === "loading";
-
   return (
     <div className="min-h-screen bg-linear-to-br from-blue-50 to-teal-100">
       <header className="bg-white shadow-md border-b border-gray-200">
@@ -217,7 +175,7 @@ export default function MedicamentosPage() {
                 Medicamentos
               </h1>
               <p className="text-gray-600 mt-1">
-                Cadastre horários e ative lembretes neste dispositivo.
+                Cadastre medicamentos e horários de uso.
               </p>
             </div>
           </div>
@@ -225,70 +183,6 @@ export default function MedicamentosPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-        <section className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                <Bell className="w-5 h-5 text-blue-600" />
-                Lembretes
-              </h2>
-              <p className="text-gray-600 mt-1 text-sm">{pushHelp}</p>
-              {iosNeedsInstall && (
-                <p className="text-amber-700 text-sm mt-2">
-                  No iPhone/iPad, adicione o MedGuide à Tela de Início para
-                  receber Web Push.
-                </p>
-              )}
-              {pushError && (
-                <p className="text-red-600 text-sm mt-2">{pushError}</p>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {pushStatus === "subscribed" ? (
-                <button
-                  type="button"
-                  disabled={pushBusy}
-                  onClick={() =>
-                    void unsubscribe().then(() =>
-                      setActionMessage("Lembretes desativados neste dispositivo.")
-                    )
-                  }
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 disabled:opacity-50"
-                >
-                  <BellOff className="w-4 h-4" />
-                  Desativar
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={activateDisabled || !canActivate}
-                  onClick={() =>
-                    void subscribe().then(() =>
-                      setActionMessage("Lembretes ativados.")
-                    )
-                  }
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
-                >
-                  <Bell className="w-4 h-4" />
-                  Ativar lembretes
-                </button>
-              )}
-              <button
-                type="button"
-                disabled={pushBusy || pushStatus !== "subscribed"}
-                onClick={() =>
-                  void sendTest().then(() =>
-                    setActionMessage("Notificação de teste enviada.")
-                  )
-                }
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-50"
-              >
-                Enviar teste
-              </button>
-            </div>
-          </div>
-        </section>
-
         <section className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             {editingId ? "Editar medicamento" : "Novo medicamento"}
@@ -383,7 +277,7 @@ export default function MedicamentosPage() {
                   setForm((prev) => ({ ...prev, active: e.target.checked }))
                 }
               />
-              Ativo (gera lembretes)
+              Ativo
             </label>
 
             {(formError || medsError) && (
