@@ -41,6 +41,13 @@ export interface Appointment {
   doctor_notes?: string;
 }
 
+export interface UpdateAppointmentData {
+  status?: Appointment["status"];
+  diagnosis?: string | null;
+  prescription?: string | null;
+  doctor_notes?: string | null;
+}
+
 class AppointmentService {
   private baseUrl: string;
 
@@ -238,6 +245,70 @@ class AppointmentService {
       return data.data?.appointments || data.appointments || [];
     } catch (error) {
       console.error("❌ Erro ao buscar consultas:", error);
+      throw error;
+    }
+  }
+
+  async updateAppointment(
+    appointmentId: string,
+    data: UpdateAppointmentData
+  ): Promise<Appointment> {
+    try {
+      const token = this.getAuthToken();
+      const url = `${this.baseUrl}/api/appointments/${appointmentId}`;
+
+      const payload: UpdateAppointmentData = {};
+      if (data.status !== undefined) payload.status = data.status;
+      if (data.diagnosis !== undefined) {
+        payload.diagnosis =
+          data.diagnosis === null ? null : data.diagnosis.trim() || null;
+      }
+      if (data.prescription !== undefined) {
+        payload.prescription =
+          data.prescription === null ? null : data.prescription.trim() || null;
+      }
+      if (data.doctor_notes !== undefined) {
+        payload.doctor_notes =
+          data.doctor_notes === null ? null : data.doctor_notes.trim() || null;
+      }
+
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const responseText = await response.text();
+      let responseData: Record<string, unknown> = {};
+      try {
+        responseData = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        throw new Error("Resposta inválida do servidor");
+      }
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Não autorizado. Faça login novamente.");
+        }
+        const message =
+          (responseData?.message as string) ||
+          (responseData?.error as string) ||
+          `Erro ${response.status}: ${response.statusText}`;
+        throw new Error(message);
+      }
+
+      const appointment =
+        (responseData.data as { appointment?: Appointment })?.appointment ||
+        (responseData.data as Appointment) ||
+        (responseData.appointment as Appointment) ||
+        (responseData as unknown as Appointment);
+
+      return appointment;
+    } catch (error) {
+      console.error("❌ Erro ao atualizar consulta:", error);
       throw error;
     }
   }
