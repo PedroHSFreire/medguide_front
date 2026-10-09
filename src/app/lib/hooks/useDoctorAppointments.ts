@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import type { RecommendedMedication } from "../types/prescriptions";
 
 export interface DoctorAppointment {
   id: string;
@@ -12,6 +13,7 @@ export interface DoctorAppointment {
   diagnosis?: string;
   prescription?: string;
   doctor_notes?: string;
+  recommended_medications?: RecommendedMedication[];
   specialty: string;
   doctor_id: string;
   doctor_name: string;
@@ -26,6 +28,7 @@ export interface ClinicalRecordData {
   diagnosis?: string | null;
   prescription?: string | null;
   doctor_notes?: string | null;
+  recommended_medications?: RecommendedMedication[];
 }
 
 interface UseDoctorAppointmentsReturn {
@@ -160,6 +163,7 @@ export const useDoctorAppointments = (
             clinical.doctor_notes === undefined
               ? null
               : clinical.doctor_notes.trim() || null,
+          recommended_medications: clinical.recommended_medications ?? [],
         };
 
         const response = await fetch(url, {
@@ -186,6 +190,7 @@ export const useDoctorAppointments = (
                   diagnosis: payload.diagnosis ?? undefined,
                   prescription: payload.prescription ?? undefined,
                   doctor_notes: payload.doctor_notes ?? undefined,
+                  recommended_medications: payload.recommended_medications,
                 }
               : apt
           )

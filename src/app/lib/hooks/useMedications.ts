@@ -4,13 +4,17 @@ import { useCallback, useEffect, useState } from "react";
 import { medicationService } from "../service/medicationService";
 import type {
   CreateMedicationBody,
+  DoseConfirmationBody,
+  DueDose,
   Medication,
   UpdateMedicationBody,
 } from "../types/medications";
 
 export function useMedications(enabled = true) {
   const [medications, setMedications] = useState<Medication[]>([]);
+  const [dueDoses, setDueDoses] = useState<DueDose[]>([]);
   const [loading, setLoading] = useState(false);
+  const [dueLoading, setDueLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -29,25 +33,37 @@ export function useMedications(enabled = true) {
     }
   }, [enabled]);
 
+  const refreshDue = useCallback(async () => {
+    if (!enabled) return;
+    setDueLoading(true);
+    try {
+      const doses = await medicationService.listDue();
+      setDueDoses(doses);
+    } catch {
+      // Due endpoint may not be ready yet; keep list usable.
+      setDueDoses([]);
+    } finally {
+      setDueLoading(false);
+    }
+  }, [enabled]);
+
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+    void refreshDue();
+  }, [refresh, refreshDue]);
 
-  const create = useCallback(
-    async (body: CreateMedicationBody) => {
-      setError(null);
-      const created = await medicationService.create({
-        ...body,
-        timezone:
-          body.timezone ||
-          Intl.DateTimeFormat().resolvedOptions().timeZone ||
-          "America/Sao_Paulo",
-      });
-      setMedications((prev) => [created, ...prev]);
-      return created;
-    },
-    []
-  );
+  const create = useCallback(async (body: CreateMedicationBody) => {
+    setError(null);
+    const created = await medicationService.create({
+      ...body,
+      timezone:
+        body.timezone ||
+        Intl.DateTimeFormat().resolvedOptions().timeZone ||
+        "America/Sao_Paulo",
+    });
+    setMedications((prev) => [created, ...prev]);
+    return created;
+  }, []);
 
   const update = useCallback(async (id: string, body: UpdateMedicationBody) => {
     setError(null);
@@ -69,14 +85,34 @@ export function useMedications(enabled = true) {
     setMedications((prev) => prev.filter((med) => med.id !== id));
   }, []);
 
+  const confirmDose = useCallback(
+    async (medicationId: string, body: DoseConfirmationBody) => {
+      setError(null);
+      await medicationService.confirmDose(medicationId, body);
+      setDueDoses((prev) =>
+        prev.map((dose) =>
+          dose.medicationId === medicationId &&
+          dose.scheduledFor === body.scheduledFor
+            ? { ...dose, status: body.status }
+            : dose
+        )
+      );
+    },
+    []
+  );
+
   return {
     medications,
+    dueDoses,
     loading,
+    dueLoading,
     error,
     refresh,
+    refreshDue,
     create,
     update,
     toggleActive,
     remove,
+    confirmDose,
   };
 }
