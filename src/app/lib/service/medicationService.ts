@@ -1,5 +1,7 @@
 import type {
   CreateMedicationBody,
+  DoseConfirmationBody,
+  DueDose,
   Medication,
   UpdateMedicationBody,
 } from "../types/medications";
@@ -18,10 +20,7 @@ class MedicationService {
     return null;
   }
 
-  private async request<T>(
-    path: string,
-    init: RequestInit = {}
-  ): Promise<T> {
+  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const token = this.getAuthToken();
     const res = await fetch(`${this.baseUrl}${path}`, {
       ...init,
@@ -46,9 +45,9 @@ class MedicationService {
   }
 
   async list(): Promise<Medication[]> {
-    const data = await this.request<Medication[] | { medications: Medication[] }>(
-      "/api/medications"
-    );
+    const data = await this.request<
+      Medication[] | { medications: Medication[] }
+    >("/api/medications");
     if (Array.isArray(data)) return data;
     return data.medications ?? [];
   }
@@ -70,6 +69,24 @@ class MedicationService {
   async remove(id: string): Promise<void> {
     await this.request<unknown>(`/api/medications/${id}`, {
       method: "DELETE",
+    });
+  }
+
+  async listDue(): Promise<DueDose[]> {
+    const data = await this.request<DueDose[] | { doses: DueDose[] }>(
+      "/api/medications/due"
+    );
+    if (Array.isArray(data)) return data;
+    return data.doses ?? [];
+  }
+
+  async confirmDose(
+    medicationId: string,
+    body: DoseConfirmationBody
+  ): Promise<void> {
+    await this.request(`/api/medications/${medicationId}/doses/confirm`, {
+      method: "POST",
+      body: JSON.stringify(body),
     });
   }
 }

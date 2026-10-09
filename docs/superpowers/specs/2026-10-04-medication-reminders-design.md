@@ -184,3 +184,10 @@ This frontend PR **requires** Medguide endpoints above. Minimum for E2E validati
 | `NEXT_PUBLIC_API_URL` | Front (existing) | Medguide base URL without `/api` |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Front | `pushManager.subscribe` applicationServerKey |
 | VAPID private key + subject | Medguide only | Sign outgoing Web Push |
+
+## Amendment (2026-10-09) — Doctor prescriptions + adherence
+
+- Clinical `PUT /api/appointments/:id` accepts `recommended_medications[]` (`name`, `dosage?`, `times`, `durationDays`). Backend auto-creates patient medications (`source: "doctor"`).
+- Medication model adds `durationDays`, `source`, `appointmentId`, `endsAt`.
+- Adherence: `GET /api/medications/due`, `POST /api/medications/:id/doses/confirm` with `{ scheduledFor, status: "taken"|"skipped" }`.
+- Push payload should include `medicationId`, `scheduledFor`, and deep-link `url` so notification actions open `/pacient/medicamentos?confirm=…` (auth happens in the page, not the SW).

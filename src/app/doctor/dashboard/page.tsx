@@ -91,6 +91,7 @@ export default function DoctorDashboard() {
     diagnosis?: string;
     prescription?: string;
     doctor_notes?: string;
+    recommended_medications?: ClinicalRecordFields["recommended_medications"];
   } | null>(null);
 
   // Converter agendamentos reais para o formato do front-end
@@ -113,6 +114,7 @@ export default function DoctorDashboard() {
       diagnosis: apt.diagnosis,
       prescription: apt.prescription,
       doctor_notes: apt.doctor_notes,
+      recommended_medications: apt.recommended_medications,
     }));
   }, [realAppointments]);
 
@@ -196,11 +198,14 @@ export default function DoctorDashboard() {
     diagnosis?: string;
     prescription?: string;
     doctor_notes?: string;
+    recommended_medications?: ClinicalRecordFields["recommended_medications"];
   }) =>
     Boolean(
       appointment.diagnosis ||
         appointment.prescription ||
-        appointment.doctor_notes
+        appointment.doctor_notes ||
+        (appointment.recommended_medications &&
+          appointment.recommended_medications.length > 0)
     );
 
   // Funções para exames (mantidas do código original)
@@ -647,6 +652,8 @@ export default function DoctorDashboard() {
                                     diagnosis: appointment.diagnosis,
                                     prescription: appointment.prescription,
                                     doctor_notes: appointment.doctor_notes,
+                                    recommended_medications:
+                                      appointment.recommended_medications,
                                   })
                                 }
                                 className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -687,6 +694,16 @@ export default function DoctorDashboard() {
                                   {appointment.doctor_notes}
                                 </p>
                               )}
+                              {appointment.recommended_medications &&
+                                appointment.recommended_medications.length >
+                                  0 && (
+                                  <p>
+                                    <strong>Medicamentos:</strong>{" "}
+                                    {appointment.recommended_medications
+                                      .map((m) => m.name)
+                                      .join(", ")}
+                                  </p>
+                                )}
                             </div>
                           )}
                         </div>
@@ -716,6 +733,8 @@ export default function DoctorDashboard() {
                                   diagnosis: appointment.diagnosis,
                                   prescription: appointment.prescription,
                                   doctor_notes: appointment.doctor_notes,
+                                  recommended_medications:
+                                    appointment.recommended_medications,
                                 })
                               }
                               className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -746,6 +765,16 @@ export default function DoctorDashboard() {
                                   {appointment.doctor_notes}
                                 </p>
                               )}
+                              {appointment.recommended_medications &&
+                                appointment.recommended_medications.length >
+                                  0 && (
+                                  <p>
+                                    <strong>Medicamentos:</strong>{" "}
+                                    {appointment.recommended_medications
+                                      .map((m) => m.name)
+                                      .join(", ")}
+                                  </p>
+                                )}
                             </div>
                           )}
                         </div>
@@ -767,6 +796,8 @@ export default function DoctorDashboard() {
           diagnosis: clinicalModalAppointment?.diagnosis,
           prescription: clinicalModalAppointment?.prescription,
           doctor_notes: clinicalModalAppointment?.doctor_notes,
+          recommended_medications:
+            clinicalModalAppointment?.recommended_medications,
         }}
         onSave={handleSaveClinicalRecord}
       />
