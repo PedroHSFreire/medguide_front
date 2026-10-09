@@ -15,6 +15,7 @@ import {
   Plus,
   CheckCircle2,
   LogOut,
+  Pill,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 
@@ -114,6 +115,13 @@ export default function PacientDashboard() {
             </div>
             <div className="flex items-center space-x-4">
               <button
+                onClick={() => router.push("/pacient/medicamentos")}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors"
+              >
+                <Pill className="w-5 h-5" />
+                Medicamentos
+              </button>
+              <button
                 onClick={() => router.push("/pacient/profile")}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
               >
@@ -135,7 +143,7 @@ export default function PacientDashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-600">
             <div className="flex items-center justify-between">
               <div>
@@ -176,6 +184,25 @@ export default function PacientDashboard() {
               <Clock className="w-12 h-12 text-purple-600 opacity-20" />
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => router.push("/pacient/medicamentos")}
+            className="bg-white rounded-xl shadow-md p-6 border-l-4 border-teal-600 text-left hover:shadow-lg transition-shadow"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 text-sm">Medicamentos</p>
+                <p className="text-2xl font-bold text-gray-900 mt-2">
+                  Lembretes
+                </p>
+                <p className="text-sm text-teal-700 mt-1">
+                  Gerenciar horários de medicamentos
+                </p>
+              </div>
+              <Pill className="w-12 h-12 text-teal-600 opacity-20" />
+            </div>
+          </button>
         </div>
 
         {/* Tabs */}
